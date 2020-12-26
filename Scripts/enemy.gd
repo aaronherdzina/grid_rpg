@@ -1,6 +1,6 @@
 extends Node2D
 
-var speed = 350
+var speed = rand_range(300, 450)
 var path = []
 var target_pos = Vector2()
 var target_tile = null
@@ -41,21 +41,21 @@ func set_navigation():
 			if p == t.index:
 				path.append(t)
 				debug_idx_path.append(t.index)
-				t.modulate = Color(.7, .7, .2, 1)
 	print('debug_idx_path is ' + str(debug_idx_path) + ' made from start' + str(current_tile.index) + ' to '  + str(target_tile.index) + ' with point array ' + str(point_path))
 	if path.size() > 0:
 		current_tile = path[0]
-		path[0].modulate = Color(0, 0, .5, 1)
-		path[-1].modulate = Color(1, 1, 0, 1)
+		#path[0].modulate = Color(0, 0, .5, 1)
+		#path[-1].modulate = Color(1, 1, 0, 1)
 
 
 func _process(delta):
 	# note the path is a list of actual tiles 
 	if path.size() > 0:
 		var d = self.global_position.distance_to(path[0].global_position)
-		if d > 2:
+		if d > 10:
 			position = self.global_position.linear_interpolate(path[0].global_position, (speed * delta)/d)
 		else:
+			print('remove pos')
 			current_tile = path[0]
 			position = current_tile.global_position
 			path.remove(0)

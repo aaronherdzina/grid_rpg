@@ -11,11 +11,9 @@ var top_tiles = []
 var bottom_tiles = []
 var left_tiles = []
 var right_tiles = []
-var tile_gap = 50
+var tile_gap = 160
 
-var min_tile_gap = 50
-var max_tile_gap = 150
-var enms = 1
+var enms = 5
 var level_astar = null
 # Called when the node enters the scene tree for the first time.
 func _ready():
@@ -28,14 +26,6 @@ func spawn_tiles():
 	var row = meta.current_level_rows
 	#if not starting_tile:
 	#	starting_tile = get_node("starting_tile")
-	
-	# devide screen width by total tiles and additional 5% buffer to find tile spacing
-	tile_gap = 1080 / (col * row) * (col + row)
-	if tile_gap < min_tile_gap: 
-		tile_gap = min_tile_gap
-	if tile_gap > max_tile_gap: 
-		tile_gap = max_tile_gap
-	print('tile gap is ' + str(tile_gap))
 
 	var tile_index = -1
 
@@ -64,22 +54,6 @@ func spawn_tiles():
 									(r * tile_gap),\
 									starting_tile.global_position.y +\
 									(c * tile_gap))
-			"""
-			if not path_start_tile:
-				if rand_range(0, 10) >= 9.9
-					or tile_index >= (col * row) * .70:
-					path_start_tile = t
-					t.modulate = Color(1, 1, 0, 1)
-					t.is_start = true
-					t.can_move = true
-			if not path_end_tile:
-				if rand_range(0, 10) >= 9.5
-				   or tile_index >= (col * row) * .99:
-					path_end_tile = t
-					t.modulate = Color(0, 0, 1, 1)
-					t.is_end = true
-					t.can_move = true
-			"""
 			if main.debug: 
 				t.get_node("debug_info").visible = true
 				t.get_node("debug_info").set_text(tile_info)
@@ -112,12 +86,16 @@ func spawn_enemies(astar_path_obj, starting_tile, target_tile):
 
 func set_tile_neighbors(row, col):
 	for t in level_tiles:
-		if rand_range(0, 10) >= 99:
+		if rand_range(0, 10) >= 8:
 			t.can_move = false
-			t.modulate = Color(0, 0, 0, 1)
 			connect_astart_path_neightbors(level_astar, t.index, t, row, col, 100)
+			t.get_node("Sprite").set_texture(main.WALL_TILE)
+		elif rand_range(0, 10) >= 9:
+			connect_astart_path_neightbors(level_astar, t.index, t, row, col, 1)
+			t.get_node("Sprite").set_texture(main.MOUNTAIN_TILE)
 		else:
 			connect_astart_path_neightbors(level_astar, t.index, t, row, col, 1)
+			t.get_node("Sprite").set_texture(main.BASIC_TILE)
 
 
 func connect_astart_path_neightbors(astar_path_obj, tile_index, tile, row, col, tile_weight):

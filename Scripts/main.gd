@@ -3,6 +3,12 @@ extends Node
 const debug = true # for dev
 
 
+# TILES
+const BASIC_TILE = preload("res://Sprites/tiles/basic/gridrpgBasic.png")
+const WALL_TILE = preload("res://Sprites/tiles/basic/gridrpgWall.png")
+const MOUNTAIN_TILE = preload("res://Sprites/tiles/basic/gridrpgBasic.png")
+#######
+
 
 const LEVEL = preload("res://Scenes/level.tscn")
 const TILE = preload("res://Scenes/tile.tscn")
@@ -127,6 +133,7 @@ func _input(event):
 			waitToProcessMenuClick = false
 	if Input.is_action_pressed("start"): 
 		if current_screen == 'main_menu':
+			#get_node("/root/main_menu").visible = false
 			var l = LEVEL.instance()
 			get_node("/root").add_child(l)
 			l.spawn_tiles()

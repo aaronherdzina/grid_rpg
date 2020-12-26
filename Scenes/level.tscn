@@ -1,8 +1,10 @@
-[gd_scene load_steps=5 format=2]
+[gd_scene load_steps=7 format=2]
 
 [ext_resource path="res://Scripts/level.gd" type="Script" id=1]
 [ext_resource path="res://Sprites/General/blueDot.png" type="Texture" id=2]
 [ext_resource path="res://Sprites/General/darkBlueBox.png" type="Texture" id=3]
+[ext_resource path="res://Sprites/General/wall.png" type="Texture" id=4]
+[ext_resource path="res://Sprites/General/basic tile.png" type="Texture" id=5]
 
 [sub_resource type="TileSet" id=1]
 0/name = "darkBlueBox.png 0"
@@ -33,6 +35,17 @@
 script = ExtResource( 1 )
 
 [node name="background_imgs" type="Node2D" parent="."]
+z_index = -100
+
+[node name="Sprite2" type="Sprite" parent="background_imgs"]
+position = Vector2( 994.899, 499.217 )
+scale = Vector2( 1.28933, 0.837034 )
+texture = ExtResource( 4 )
+
+[node name="Sprite" type="Sprite" parent="background_imgs"]
+position = Vector2( 962.372, 540.23 )
+scale = Vector2( 0.938542, 0.526294 )
+texture = ExtResource( 5 )
 
 [node name="nav" type="Navigation2D" parent="."]
 
