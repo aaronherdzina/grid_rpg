@@ -5,9 +5,10 @@ var path = []
 var target_pos = Vector2()
 var target_tile = null
 var current_tile = null
+var chosen_tile = null
+var moving = false
+var move_distance = 2
 var processing_turn = false
-
-var move_distance = rand_range(2, 5)
 
 func _ready():
 	set_process(true)
@@ -23,6 +24,7 @@ func set_tile_target(target_node):
 
 	target_tile = target_node
 	target_pos = target_node.global_position
+
 
 func set_spawn_tile(target_node):
 	position = target_node.global_position
@@ -45,9 +47,9 @@ func set_navigation():
 			if p == t.index:
 				path.append(t)
 				debug_idx_path.append(t.index)
-			if len(path) > move_distance:
+			if len(path) > meta.current_char["move_distance"]:
 				break
-		if len(path) > move_distance:
+		if len(path) > meta.current_char["move_distance"]:
 			break
 	print('debug_idx_path is ' + str(debug_idx_path) + ' made from start' + str(current_tile.index) + ' to '  + str(target_tile.index) + ' with point array ' + str(point_path))
 	if path.size() > 0:
@@ -58,12 +60,17 @@ func set_navigation():
 
 func start_turn():
 	# start turn
+	meta.player_turn = true
+	if moving:
+		moving = false
+
 	# process turn
 	# consider delay to move animations
-	
+
 	#######
 
 	# after turn
+	meta.player_turn = false
 	processing_turn = false
 
 
@@ -72,19 +79,21 @@ func stop_turn():
 
 
 func move():
-	var player = get_node("/root/player")
-
-	set_tile_target(player.current_tile)
+	set_tile_target(chosen_tile)
 	set_navigation()
+
 
 
 func _process(delta):
 	# note the path is a list of actual tiles 
-	if path.size() > 0:
-		var d = self.global_position.distance_to(path[0].global_position)
-		if d > 10:
-			position = self.global_position.linear_interpolate(path[0].global_position, (speed * delta)/d)
-		else:
-			current_tile = path[0]
-			position = current_tile.global_position
-			path.remove(0)
+	if meta.player_turn and moving:
+		if path.size() > 0:
+			var d = self.global_position.distance_to(path[0].global_position)
+			if d > 10:
+				position = self.global_position.linear_interpolate(path[0].global_position, (speed * delta)/d)
+			else:
+				current_tile = path[0]
+				position = current_tile.global_position
+				path.remove(0)
+		elif moving:
+			moving = false

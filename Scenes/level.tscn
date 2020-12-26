@@ -1,10 +1,12 @@
-[gd_scene load_steps=7 format=2]
+[gd_scene load_steps=9 format=2]
 
 [ext_resource path="res://Scripts/level.gd" type="Script" id=1]
 [ext_resource path="res://Sprites/General/blueDot.png" type="Texture" id=2]
 [ext_resource path="res://Sprites/General/darkBlueBox.png" type="Texture" id=3]
 [ext_resource path="res://Sprites/General/wall.png" type="Texture" id=4]
 [ext_resource path="res://Sprites/General/basic tile.png" type="Texture" id=5]
+[ext_resource path="res://Sprites/UI/Untitled_Artwork 2.png" type="Texture" id=6]
+[ext_resource path="res://Sprites/tiles/basic/gridrpgWall.png" type="Texture" id=7]
 
 [sub_resource type="TileSet" id=1]
 0/name = "darkBlueBox.png 0"
@@ -61,3 +63,46 @@ position = Vector2( 103, 105 )
 
 [node name="debug_sprite" type="Sprite" parent="starting_tile"]
 texture = ExtResource( 2 )
+
+[node name="Sprite2" type="Sprite" parent="."]
+modulate = Color( 0, 0, 0, 0.0980392 )
+position = Vector2( 115.74, 86.3148 )
+scale = Vector2( 0.260362, 0.384504 )
+texture = ExtResource( 6 )
+
+[node name="Sprite3" type="Sprite" parent="."]
+modulate = Color( 0, 0, 0, 0.392157 )
+position = Vector2( 111.674, 89.3201 )
+scale = Vector2( 0.250345, 0.362113 )
+texture = ExtResource( 6 )
+
+[node name="Button" type="Button" parent="."]
+margin_left = 43.0
+margin_top = 33.0
+margin_right = 188.0
+margin_bottom = 138.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="Sprite" type="Sprite" parent="Button"]
+position = Vector2( 73.4475, 52.0774 )
+scale = Vector2( 1.14811, 0.805749 )
+texture = ExtResource( 7 )
+
+[node name="Label" type="Label" parent="."]
+margin_left = 43.0
+margin_top = 34.0
+margin_right = 139.0
+margin_bottom = 105.0
+rect_scale = Vector2( 1.5, 1.5 )
+custom_colors/font_color_shadow = Color( 0, 0, 0, 1 )
+text = "END TURN"
+align = 1
+valign = 1
+__meta__ = {
+"_edit_use_anchors_": false
+}
+[connection signal="mouse_entered" from="Button" to="." method="_on_end_turn_button_mouse_entered"]
+[connection signal="mouse_exited" from="Button" to="." method="_on_end_turn_button_mouse_exited"]
+[connection signal="pressed" from="Button" to="." method="_on_end_turn_button_pressed"]

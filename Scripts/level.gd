@@ -11,6 +11,7 @@ var top_tiles = []
 var bottom_tiles = []
 var left_tiles = []
 var right_tiles = []
+var round_turns = []
 var tile_gap = 160
 
 var enms = 5
@@ -32,31 +33,32 @@ func spawn_tiles():
 	level_astar = AStar2D.new()
 	#var res = astar.get_id_path(1, 3) # Returns [1, 2, 3]
 	
-	for r in range(0, row):
-		for c in range(0, col):
+	for c in range(0, col):
+		for r in range(0, row):
 			tile_index += 1
 			var t = main.TILE.instance()
 			var tile_map = $nav/tile_map
 			var tile_info = ""
 			get_node("nav/tile_map").add_child(t)
 			t.row = r
-			t.column = c
+			t.col = c
 			level_tiles.append(t)
 			t.index = tile_index
 			
-			if main.debug: tile_info += " |ID " + str(tile_index)
+			if main.debug: tile_info += " |row/col " + str(r) + '/' + str(c)
 			
 			if not starting_tile:
 				starting_tile = t
-				t.position = Vector2(tile_gap, tile_gap)
+				t.position = Vector2(tile_gap * 1.65, tile_gap * .65)
 			else:
 				t.position = Vector2(starting_tile.global_position.x +\
-									(r * tile_gap),\
+									(c * tile_gap),\
 									starting_tile.global_position.y +\
-									(c * tile_gap))
+									(r * tile_gap))
 			if main.debug: 
 				t.get_node("debug_info").visible = true
 				t.get_node("debug_info").set_text(tile_info)
+
 	print('level_astar ' + str(level_astar))
 	set_tile_neighbors(row, col)
 	for _i in range(0, enms):
@@ -101,29 +103,59 @@ func set_tile_neighbors(row, col):
 func connect_astart_path_neightbors(astar_path_obj, tile_index, tile, row, col, tile_weight):
 	# We use the current tile's index as reference
 	var above_tile_idx = tile_index - 1
-	var right_tile_idx = tile_index + col
+	var right_tile_idx = tile_index + row
 	var below_tile_idx = tile_index + 1
-	var left_tile_idx = tile_index - col
+	var left_tile_idx = tile_index - row
 	var tile_count = len(level_tiles) - 1 # from 0
 
 	# set initial spot
 	astar_path_obj.add_point(tile_index, tile.global_position, tile_weight)
-
 	# make sure point exists, node exists and make sure the
 	# index is not out of range or the tile array
-	if astar_path_obj.has_point(above_tile_idx) and above_tile_idx >= 0 and above_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
+	if tile.row > 0 and astar_path_obj.has_point(above_tile_idx) and above_tile_idx >= 0 and above_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
 		astar_path_obj.connect_points(tile_index, above_tile_idx, true)
 
-	if astar_path_obj.has_point(right_tile_idx) and right_tile_idx >= 0 and right_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
+	if tile.col < col - 1 and astar_path_obj.has_point(right_tile_idx) and right_tile_idx >= 0 and right_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
 		astar_path_obj.connect_points(tile_index, right_tile_idx, true)
 
-	if astar_path_obj.has_point(below_tile_idx) and below_tile_idx >= 0 and below_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
+	if tile.row < row - 1 and astar_path_obj.has_point(below_tile_idx) and below_tile_idx >= 0 and below_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
 		astar_path_obj.connect_points(tile_index, below_tile_idx, true)
 
-	if astar_path_obj.has_point(left_tile_idx) and left_tile_idx >= 0 and left_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
+	if tile.col > 0 and astar_path_obj.has_point(left_tile_idx) and left_tile_idx >= 0 and left_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
 		astar_path_obj.connect_points(tile_index, left_tile_idx, true)
-	
+
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 #func _process(delta):
 #	pass
+
+func end_turn():
+	if len(round_turns) > 0:
+		var turn_time_limit = 25
+		round_turns[0].processing_turn = true
+		round_turns[0].start_turn()
+		while round_turns[0].processing_turn:
+			var timer = Timer.new()
+			timer.set_wait_time(1)
+			timer.set_one_shot(true)
+			get_node("/root").addToParent(timer)
+			timer.start()
+			yield(timer, "timeout")
+			timer.queue_free()
+			turn_time_limit -= 1
+			if turn_time_limit <= 0:
+				print("turn didn't end before limit moving on")
+				round_turns[0].processing_turn = false
+				break
+		round_turns.remove(0)
+
+
+func _on_end_turn_button_pressed():
+	end_turn()
+
+func _on_end_turn_button_mouse_entered():
+	pass # Replace with function body.
+
+
+func _on_end_turn_button_mouse_exited():
+	pass # Replace with function body.
