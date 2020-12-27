@@ -30,6 +30,8 @@ func set_tile_target(target_node):
 func set_spawn_tile(target_node):
 	position = target_node.global_position
 	current_tile = target_node
+	chosen_tile = target_node
+	target_pos = target_node.global_position
 
 
 func set_navigation():
@@ -61,22 +63,18 @@ func set_navigation():
 
 func start_turn():
 	# start turn
+	var l = get_node("/root/level")
+	var default_weight =  meta.unccupied_tile_weight if current_tile.can_move else meta.wall_tile_weight
+	l.level_astar.set_point_weight_scale(current_tile.index, default_weight)
 	moved_this_turn = false
 	meta.player_turn = true
 	if moving:
 		moving = false
 
-	# process turn
-	# consider delay to move animations
-
-	#######
-
-	# after turn
-	meta.player_turn = false
-	processing_turn = false
-
 
 func stop_turn():
+	var l = get_node("/root/level")
+	l.level_astar.set_point_weight_scale(current_tile.index, meta.occupied_tile_weight)
 	moved_this_turn = false
 	processing_turn = false
 
