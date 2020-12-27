@@ -182,7 +182,7 @@ func process_enemy_turns():
 			turn_time_limit -= 1
 			if turn_time_limit <= 0:
 				print("turn didn't end before limit moving on")
-				round_turns[0].processing_turn = false
+				if len(round_turns) > 0: round_turns[0].processing_turn = false
 				break
 		print('turn over')
 		round_turns.remove(0)
