@@ -13,6 +13,7 @@ const MOUNTAIN_TILE = preload("res://Sprites/tiles/basic/gridrpgBasic.png")
 const LEVEL = preload("res://Scenes/level.tscn")
 const TILE = preload("res://Scenes/tile.tscn")
 const ENEMY = preload("res://Scenes/enemy.tscn")
+const PLAYER = preload("res://Scenes/player.tscn")
 
 #### SAVE LOAD VARS
 var game_name = 'game_name'

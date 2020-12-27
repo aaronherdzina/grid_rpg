@@ -6,6 +6,7 @@ var target_pos = Vector2()
 var target_tile = null
 var current_tile = null
 var processing_turn = false
+var id = 0
 
 var move_distance = rand_range(2, 5)
 
@@ -36,7 +37,7 @@ func set_navigation():
 	var point_path = l.level_astar.get_id_path(current_tile.index, target_tile.index)
 	path = []
 	var debug_idx_path = []
-	print('debug_idx_path is ' + str(debug_idx_path) + ' made from start ' + str(current_tile.index) + ' to '  + str(target_tile.index) + ' with point array ' + str(point_path))
+	#print('debug_idx_path is ' + str(debug_idx_path) + ' made from start ' + str(current_tile.index) + ' to '  + str(target_tile.index) + ' with point array ' + str(point_path))
 	
 	# WE seem to be adding path tile nodes in wrong order compared to astar point array
 	# we probably want to do this and just correct though then we have reference to the tile too
@@ -49,7 +50,7 @@ func set_navigation():
 				break
 		if len(path) > move_distance:
 			break
-	print('debug_idx_path is ' + str(debug_idx_path) + ' made from start' + str(current_tile.index) + ' to '  + str(target_tile.index) + ' with point array ' + str(point_path))
+	#print('debug_idx_path is ' + str(debug_idx_path) + ' made from start' + str(current_tile.index) + ' to '  + str(target_tile.index) + ' with point array ' + str(point_path))
 	if path.size() > 0:
 		current_tile = path[0]
 		#path[0].modulate = Color(0, 0, .5, 1)
@@ -60,20 +61,18 @@ func start_turn():
 	# start turn
 	# process turn
 	# consider delay to move animations
-	
+	move()
 	#######
 
 	# after turn
-	processing_turn = false
 
 
 func stop_turn():
-	pass
+	processing_turn = false
 
 
 func move():
 	var player = get_node("/root/player")
-
 	set_tile_target(player.current_tile)
 	set_navigation()
 
@@ -88,3 +87,5 @@ func _process(delta):
 			current_tile = path[0]
 			position = current_tile.global_position
 			path.remove(0)
+	else:
+		stop_turn() # does not handle attacking or anything yet

@@ -5,7 +5,7 @@ var current_level_rows = 6
 var default_level_cols = 10
 var default_level_rows = 6
 
-var player_turn = false
+var player_turn = true
 
 var current_char = {
 	"move_distance": 2,

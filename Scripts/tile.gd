@@ -8,6 +8,7 @@ var index = 0
 var row = 0
 var col = 0
 var neighbors = []
+var player_spawn = false
 ##
 
 # Called when the node enters the scene tree for the first time.
@@ -33,22 +34,22 @@ func get_tile_neighbors(target=null):
 
 func _on_Button_pressed():
 	var l = get_node("/root/level")
+	var p = get_node("/root/player")
 	var debug_text = ""
 
 	get_tile_neighbors()
-	for t in l.level_tiles:
-		t.modulate = Color(1, 1, 1, 1)
-		if not t.can_move:
-			t.modulate = Color(.4, .4, .4, 1)
 	
 	if main.debug:
+		for t in l.level_tiles:
+			t.modulate = Color(1, 1, 1, 1)
+			if not t.can_move:
+				t.modulate = Color(.4, .4, .4, 1)
 		for n in neighbors:
 			debug_text += " " + str(n.index)
 			n.modulate = Color(0, 0, 1, 1)
-		print('neighbors ' + str(neighbors) + " " + debug_text)
-	for enm in get_tree().get_nodes_in_group("enemies"):
-		enm.set_tile_target(self)
-		enm.set_navigation()
+	if meta.player_turn:
+		p.chosen_tile = self
+		p.move()
 		
 
 func _on_Button_mouse_entered():

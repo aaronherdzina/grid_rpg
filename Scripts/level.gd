@@ -16,6 +16,7 @@ var tile_gap = 160
 
 var enms = 5
 var level_astar = null
+var current_enm_count = 0
 # Called when the node enters the scene tree for the first time.
 func _ready():
 	pass
@@ -61,6 +62,7 @@ func spawn_tiles():
 
 	print('level_astar ' + str(level_astar))
 	set_tile_neighbors(row, col)
+	spawn_player()
 	for _i in range(0, enms):
 		var timer = Timer.new()
 		timer.set_wait_time(1)
@@ -77,6 +79,33 @@ func spawn_tiles():
 				break
 
 
+func spawn_player():
+	var p = main.PLAYER.instance()
+	get_node("/root").add_child(p)
+	var spawn_tile = level_tiles[0]
+	var count = 0
+	for t in level_tiles:
+		count += 1
+		if count < len(level_tiles) * .5:
+			continue
+
+		if t.can_move:
+			if spawn_tile == level_tiles[0]:
+				spawn_tile = t
+			if len(t.neighbors) >= 3:
+				# must have at least 3 open spot nearby
+				var safe_spawn = true
+				for n in t.neighbors:
+					# check each neighbor, if any are not movable
+					# it will not be used except just as a default/fallback
+					if not n.can_move:
+						safe_spawn = false
+				if safe_spawn:
+					spawn_tile = t
+
+	p.set_spawn_tile(spawn_tile)
+
+
 func spawn_enemies(astar_path_obj, starting_tile, target_tile):
 	var e = main.ENEMY.instance()
 	get_node("/root").add_child(e)
@@ -84,6 +113,11 @@ func spawn_enemies(astar_path_obj, starting_tile, target_tile):
 	e.set_tile_target(target_tile)
 	e.set_navigation()
 	e.add_to_group("enemies")
+	e.id = current_enm_count
+	if main.debug:
+		e.get_node("Sprite/debug_info").visible = true
+		e.get_node("Sprite/debug_info").set_text(str(e.id))
+	current_enm_count += 1
 
 
 func set_tile_neighbors(row, col):
@@ -129,16 +163,17 @@ func connect_astart_path_neightbors(astar_path_obj, tile_index, tile, row, col, 
 #func _process(delta):
 #	pass
 
-func end_turn():
-	if len(round_turns) > 0:
-		var turn_time_limit = 25
+func process_enemy_turns():
+	while len(round_turns) > 0:
+		print('starting turn for ' + str(round_turns[0].id))
+		var turn_time_limit = 20
 		round_turns[0].processing_turn = true
 		round_turns[0].start_turn()
 		while round_turns[0].processing_turn:
 			var timer = Timer.new()
 			timer.set_wait_time(1)
 			timer.set_one_shot(true)
-			get_node("/root").addToParent(timer)
+			get_node("/root").add_child(timer)
 			timer.start()
 			yield(timer, "timeout")
 			timer.queue_free()
@@ -147,11 +182,21 @@ func end_turn():
 				print("turn didn't end before limit moving on")
 				round_turns[0].processing_turn = false
 				break
+		print('turn over')
 		round_turns.remove(0)
 
 
 func _on_end_turn_button_pressed():
-	end_turn()
+	if meta.player_turn: 
+		get_node("/root/player").stop_turn()
+		meta.player_turn = false
+		round_turns = []
+		for enm in get_tree().get_nodes_in_group("enemies"):
+			round_turns.append(enm)
+		process_enemy_turns()
+	else:
+		meta.player_turn = true
+		print('player turn')
 
 func _on_end_turn_button_mouse_entered():
 	pass # Replace with function body.

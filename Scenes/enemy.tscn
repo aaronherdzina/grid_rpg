@@ -10,3 +10,19 @@ script = ExtResource( 2 )
 scale = Vector2( 3, 3 )
 z_index = 5
 texture = ExtResource( 1 )
+
+[node name="debug_info" type="Label" parent="Sprite"]
+anchor_left = -0.00368279
+anchor_right = -0.00368279
+margin_left = -12.8822
+margin_top = -9.0
+margin_right = 20.1178
+margin_bottom = 16.0
+rect_scale = Vector2( 0.8, 0.8 )
+custom_colors/font_color_shadow = Color( 0, 0, 0, 1 )
+text = "5"
+align = 1
+valign = 1
+__meta__ = {
+"_edit_use_anchors_": false
+}

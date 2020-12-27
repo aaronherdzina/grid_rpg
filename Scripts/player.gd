@@ -9,6 +9,7 @@ var chosen_tile = null
 var moving = false
 var move_distance = 2
 var processing_turn = false
+var moved_this_turn = false
 
 func _ready():
 	set_process(true)
@@ -60,6 +61,7 @@ func set_navigation():
 
 func start_turn():
 	# start turn
+	moved_this_turn = false
 	meta.player_turn = true
 	if moving:
 		moving = false
@@ -75,12 +77,17 @@ func start_turn():
 
 
 func stop_turn():
-	pass
+	moved_this_turn = false
+	processing_turn = false
 
 
 func move():
+	if moved_this_turn:
+		return
+	moved_this_turn = true
 	set_tile_target(chosen_tile)
 	set_navigation()
+	moving = true
 
 
 
