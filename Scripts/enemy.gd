@@ -10,6 +10,7 @@ var id = 0
 
 var move_distance = rand_range(2, 5)
 
+
 func _ready():
 	set_process(true)
 
@@ -24,6 +25,7 @@ func set_tile_target(target_node):
 
 	target_tile = target_node
 	target_pos = target_node.global_position
+
 
 func set_spawn_tile(target_node):
 	position = target_node.global_position
@@ -59,6 +61,9 @@ func set_navigation():
 
 func start_turn():
 	# start turn
+	var l = get_node("/root/level")
+	var default_weight =  meta.unccupied_tile_weight if current_tile.can_move else meta.wall_tile_weight
+	l.level_astar.set_point_weight_scale(current_tile.index, default_weight)
 	# process turn
 	# consider delay to move animations
 	move()
@@ -68,12 +73,18 @@ func start_turn():
 
 
 func stop_turn():
+	# astar set point of current tile to
+	var l = get_node("/root/level")
+	l.level_astar.set_point_weight_scale(current_tile.index, meta.occupied_tile_weight)
 	processing_turn = false
 
 
 func move():
 	var player = get_node("/root/player")
-	set_tile_target(player.current_tile)
+	print('moving from: ' + str(id) + ' to: ' + str(player.current_tile.index))
+	var nearby_tile = meta.get_closest_adjacent_tile(self, player.current_tile)
+	print('nearby_tile: ' + str(nearby_tile))
+	set_tile_target(nearby_tile if nearby_tile else player.current_tile)
 	set_navigation()
 
 
@@ -84,8 +95,22 @@ func _process(delta):
 		if d > 10:
 			position = self.global_position.linear_interpolate(path[0].global_position, (speed * delta)/d)
 		else:
+			var player = get_node("/root/player")
 			current_tile = path[0]
 			position = current_tile.global_position
 			path.remove(0)
+			var stop_path = false
+			if len(path) > 0:
+				for enm in get_tree().get_nodes_in_group("enemies"):
+					if enm != self and enm.current_tile and enm.current_tile.index == path[0].index:
+						stop_path = true
+						break
+				if player.current_tile and path[0].index == player.current_tile.index:
+					stop_path = true
+					# if our next move would be the same as the player's stop and end move
+			else:
+				stop_path = true
+			if stop_path:
+				path = []
 	else:
 		stop_turn() # does not handle attacking or anything yet

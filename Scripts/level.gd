@@ -45,9 +45,9 @@ func spawn_tiles():
 			t.col = c
 			level_tiles.append(t)
 			t.index = tile_index
-			
+
 			if main.debug: tile_info += " |row/col " + str(r) + '/' + str(c)
-			
+
 			if not starting_tile:
 				starting_tile = t
 				t.position = Vector2(tile_gap * 1.65, tile_gap * .65)
@@ -74,9 +74,11 @@ func spawn_tiles():
 		var count = -1
 		for t in level_tiles:
 			count += 1
-			if rand_range(0, 10) >= 7 or count >= len(level_tiles) * .99:
-				spawn_enemies(level_astar,  level_tiles[0], level_tiles[col+1])
-				break
+			randomize()
+			if t.can_move:
+				if rand_range(0, 10) >= 7 or count >= len(level_tiles) * .99:
+					spawn_enemies(level_astar,  t, level_tiles[col+1])
+					break
 
 
 func spawn_player():
@@ -124,13 +126,13 @@ func set_tile_neighbors(row, col):
 	for t in level_tiles:
 		if rand_range(0, 10) >= 8:
 			t.can_move = false
-			connect_astart_path_neightbors(level_astar, t.index, t, row, col, 100)
+			#connect_astart_path_neightbors(level_astar, t.index, t, row, col, meta.wall_tile_weight)
 			t.get_node("Sprite").set_texture(main.WALL_TILE)
 		elif rand_range(0, 10) >= 9:
-			connect_astart_path_neightbors(level_astar, t.index, t, row, col, 1)
+			connect_astart_path_neightbors(level_astar, t.index, t, row, col, meta.unccupied_tile_weight)
 			t.get_node("Sprite").set_texture(main.MOUNTAIN_TILE)
 		else:
-			connect_astart_path_neightbors(level_astar, t.index, t, row, col, 1)
+			connect_astart_path_neightbors(level_astar, t.index, t, row, col, meta.unccupied_tile_weight)
 			t.get_node("Sprite").set_texture(main.BASIC_TILE)
 
 
@@ -187,15 +189,16 @@ func process_enemy_turns():
 
 
 func _on_end_turn_button_pressed():
+	var p = get_node("/root/player")
 	if meta.player_turn: 
-		get_node("/root/player").stop_turn()
+		p.stop_turn()
 		meta.player_turn = false
 		round_turns = []
 		for enm in get_tree().get_nodes_in_group("enemies"):
 			round_turns.append(enm)
 		process_enemy_turns()
 	else:
-		meta.player_turn = true
+		p.start_turn()
 		print('player turn')
 
 func _on_end_turn_button_mouse_entered():

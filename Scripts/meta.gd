@@ -6,6 +6,9 @@ var default_level_cols = 10
 var default_level_rows = 6
 
 var player_turn = true
+var occupied_tile_weight = 1000
+var unccupied_tile_weight = 1
+var wall_tile_weight = 2000
 
 var current_char = {
 	"move_distance": 2,
