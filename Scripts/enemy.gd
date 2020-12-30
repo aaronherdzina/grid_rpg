@@ -7,7 +7,7 @@ var target_tile = null
 var current_tile = null
 var processing_turn = false
 var id = 0
-
+var char_name = "Enemy"
 var move_distance = rand_range(2, 5)
 
 

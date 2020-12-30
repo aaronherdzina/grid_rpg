@@ -1,37 +1,11 @@
-[gd_scene load_steps=9 format=2]
+[gd_scene load_steps=7 format=2]
 
 [ext_resource path="res://Scripts/level.gd" type="Script" id=1]
 [ext_resource path="res://Sprites/General/blueDot.png" type="Texture" id=2]
-[ext_resource path="res://Sprites/General/darkBlueBox.png" type="Texture" id=3]
 [ext_resource path="res://Sprites/General/wall.png" type="Texture" id=4]
 [ext_resource path="res://Sprites/General/basic tile.png" type="Texture" id=5]
 [ext_resource path="res://Sprites/UI/Untitled_Artwork 2.png" type="Texture" id=6]
 [ext_resource path="res://Sprites/tiles/basic/gridrpgWall.png" type="Texture" id=7]
-
-[sub_resource type="TileSet" id=1]
-0/name = "darkBlueBox.png 0"
-0/texture = ExtResource( 3 )
-0/tex_offset = Vector2( 0, 0 )
-0/modulate = Color( 1, 1, 1, 1 )
-0/region = Rect2( 0, 0, 64, 64 )
-0/tile_mode = 1
-0/autotile/bitmask_mode = 0
-0/autotile/bitmask_flags = [  ]
-0/autotile/icon_coordinate = Vector2( 0, 0 )
-0/autotile/tile_size = Vector2( 32, 32 )
-0/autotile/spacing = 0
-0/autotile/occluder_map = [  ]
-0/autotile/navpoly_map = [  ]
-0/autotile/priority_map = [  ]
-0/autotile/z_index_map = [  ]
-0/occluder_offset = Vector2( 0, 0 )
-0/navigation_offset = Vector2( 0, 0 )
-0/shape_offset = Vector2( 0, 0 )
-0/shape_transform = Transform2D( 1, 0, 0, 1, 0, 0 )
-0/shape_one_way = false
-0/shape_one_way_margin = 0.0
-0/shapes = [  ]
-0/z_index = 0
 
 [node name="level" type="Node2D"]
 script = ExtResource( 1 )
@@ -40,7 +14,7 @@ script = ExtResource( 1 )
 z_index = -100
 
 [node name="Sprite2" type="Sprite" parent="background_imgs"]
-position = Vector2( 994.899, 499.217 )
+position = Vector2( 994.899, 497.803 )
 scale = Vector2( 1.28933, 0.837034 )
 texture = ExtResource( 4 )
 
@@ -49,13 +23,29 @@ position = Vector2( 962.372, 540.23 )
 scale = Vector2( 0.938542, 0.526294 )
 texture = ExtResource( 5 )
 
-[node name="nav" type="Navigation2D" parent="."]
+[node name="tile_container" type="Node2D" parent="."]
 
-[node name="tile_map" type="TileMap" parent="nav"]
-tile_set = SubResource( 1 )
-cell_y_sort = true
-collision_use_kinematic = true
-format = 1
+[node name="text_overlay" type="Node2D" parent="."]
+position = Vector2( 962.372, 995.23 )
+
+[node name="background" type="Sprite" parent="text_overlay"]
+modulate = Color( 0, 0, 0, 1 )
+position = Vector2( 1, 52.5 )
+scale = Vector2( 1, 0.124512 )
+texture = ExtResource( 5 )
+
+[node name="turn_text" type="Label" parent="text_overlay"]
+margin_left = -922.0
+margin_top = -75.0
+margin_right = -458.0
+margin_bottom = -44.0
+rect_scale = Vector2( 4, 4 )
+text = "Turn Text"
+align = 1
+valign = 1
+__meta__ = {
+"_edit_use_anchors_": false
+}
 
 [node name="starting_tile" type="Node2D" parent="."]
 visible = false

@@ -19,7 +19,8 @@ var nodeToClampAround = null
 var lockToMouse = true
 
 func _ready():
-	set_process(true)
+	pass
+	#set_process(true)
 
 func clamp_vector(vector, clamp_origin, clamp_length):
     var offset = vector - clamp_origin
@@ -68,30 +69,6 @@ func moveCursor():
 	elif moveRight:
 		position.x += currentSpeed
 
-func _input(event):
-	if Input.is_action_pressed("analog_cursor_up"):
-		moveUp = true
-		moveDown = false
-	elif Input.is_action_pressed("analog_cursor_down"):
-		moveUp = false
-		moveDown = true
-	else:
-		moveDown = false
-		moveUp = false
-
-	if Input.is_action_pressed("analog_cursor_left"):
-		moveLeft = true
-		moveRight = false
-	elif Input.is_action_pressed("analog_cursor_right"):
-		moveLeft = false
-		moveRight = true
-	else:
-		moveLeft = false
-		moveRight = false
-	
-	if event.is_action_released("ui_controller_focus_press") and canPress:
-		pauseClicking()
-		findAndPressButtonOfNode()
 
 func findAndPressButtonOfNode():
 	for nodes in get_overlapping_areas():

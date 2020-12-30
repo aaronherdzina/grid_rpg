@@ -117,6 +117,35 @@ func savePlayerData():
 func _input(event):
    # Mouse in viewport coordinates
 	if Input.is_action_pressed("ui_quit"): 
+		handle_main_menu_input("ui_quit")
+	if Input.is_action_pressed("start"): 
+		if current_screen == 'main_menu':
+			handle_main_menu_input("start")
+		elif current_screen == "battle":
+			handle_in_battle_input("start")
+			#get_node("/root/main_menu").visible = false
+	if Input.is_action_pressed("back"):
+		if current_screen == "battle":
+			handle_in_battle_input("back")
+
+
+func handle_in_battle_input(action):
+	var level = get_node("/root/level")
+	if action == "start":
+		level.end_turn()
+	elif action == "back": 
+		if meta.player_turn:
+			var player = get_node("/root/player")
+			player.reset_turn()
+
+
+func handle_main_menu_input(action):
+	if action == "start":
+		var l = LEVEL.instance()
+		get_node("/root").add_child(l)
+		l.spawn_tiles()
+		current_screen = 'battle'
+	elif action == "ui_quit":
 		if not waitToProcessMenuClick:
 			waitToProcessMenuClick = true
 			for btns in get_tree().get_nodes_in_group("btnsToRemove"):
@@ -132,14 +161,6 @@ func _input(event):
 			timer.queue_free()
 			# end of wait
 			waitToProcessMenuClick = false
-	if Input.is_action_pressed("start"): 
-		if current_screen == 'main_menu':
-			#get_node("/root/main_menu").visible = false
-			var l = LEVEL.instance()
-			get_node("/root").add_child(l)
-			l.spawn_tiles()
-			current_screen = 'level'
-
 #### END OF INPUT FUNCS
 
 

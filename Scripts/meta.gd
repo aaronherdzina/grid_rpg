@@ -1,5 +1,7 @@
 extends Node
 
+var char_names = ["Thief", "Brute", "Ranger", "Wizard", "Grunt"]
+
 var current_level_cols = 10
 var current_level_rows = 6
 var default_level_cols = 10
@@ -14,7 +16,7 @@ var current_char = {
 	"move_distance": 2,
 	"damage": 2,
 	"attack": 2,
-	"hp": 10,
+	"health": 10,
 	"energy_max": 3
 }
 

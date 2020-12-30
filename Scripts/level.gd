@@ -12,11 +12,12 @@ var bottom_tiles = []
 var left_tiles = []
 var right_tiles = []
 var round_turns = []
-var tile_gap = 160
+var tile_gap = 145
 
 var enms = 5
 var level_astar = null
 var current_enm_count = 0
+var processing_turns = false
 # Called when the node enters the scene tree for the first time.
 func _ready():
 	pass
@@ -38,9 +39,9 @@ func spawn_tiles():
 		for r in range(0, row):
 			tile_index += 1
 			var t = main.TILE.instance()
-			var tile_map = $nav/tile_map
+			var tile_map = $tile_container
 			var tile_info = ""
-			get_node("nav/tile_map").add_child(t)
+			get_node("tile_container").add_child(t)
 			t.row = r
 			t.col = c
 			level_tiles.append(t)
@@ -50,7 +51,7 @@ func spawn_tiles():
 
 			if not starting_tile:
 				starting_tile = t
-				t.position = Vector2(tile_gap * 1.65, tile_gap * .65)
+				t.position = Vector2(tile_gap * 2.2, tile_gap * .75)
 			else:
 				t.position = Vector2(starting_tile.global_position.x +\
 									(c * tile_gap),\
@@ -106,6 +107,7 @@ func spawn_player():
 					spawn_tile = t
 
 	p.set_spawn_tile(spawn_tile)
+	change_turn_display_name("Player")
 
 
 func spawn_enemies(astar_path_obj, starting_tile, target_tile):
@@ -115,6 +117,8 @@ func spawn_enemies(astar_path_obj, starting_tile, target_tile):
 	e.set_tile_target(target_tile)
 	e.set_navigation()
 	e.add_to_group("enemies")
+	e.char_name = meta.char_names[rand_range(0, len(meta.char_names) - 1)]
+	print('spawned: ' + e.char_name)
 	e.id = current_enm_count
 	if main.debug:
 		e.get_node("Sprite/debug_info").visible = true
@@ -134,6 +138,8 @@ func set_tile_neighbors(row, col):
 		else:
 			connect_astart_path_neightbors(level_astar, t.index, t, row, col, meta.unccupied_tile_weight)
 			t.get_node("Sprite").set_texture(main.BASIC_TILE)
+	for t in level_tiles:
+		t.get_tile_neighbors()
 
 
 func connect_astart_path_neightbors(astar_path_obj, tile_index, tile, row, col, tile_weight):
@@ -166,40 +172,64 @@ func connect_astart_path_neightbors(astar_path_obj, tile_index, tile, row, col, 
 #	pass
 
 func process_enemy_turns():
-	while len(round_turns) > 0:
-		print('starting turn for ' + str(round_turns[0].id))
-		var turn_time_limit = 20
-		round_turns[0].processing_turn = true
-		round_turns[0].start_turn()
-		while round_turns[0].processing_turn:
-			var timer = Timer.new()
-			timer.set_wait_time(1)
-			timer.set_one_shot(true)
-			get_node("/root").add_child(timer)
-			timer.start()
-			yield(timer, "timeout")
-			timer.queue_free()
-			turn_time_limit -= 1
-			if turn_time_limit <= 0:
-				print("turn didn't end before limit moving on")
-				if len(round_turns) > 0: round_turns[0].processing_turn = false
-				break
-		print('turn over')
-		round_turns.remove(0)
+	if not processing_turns:
+		processing_turns = true
+		while len(round_turns) > 0:
+			print('starting turn for ' + str(round_turns[0].id))
+			var turn_time_limit = 20
+			round_turns[0].processing_turn = true
+			round_turns[0].start_turn()
+			while round_turns[0].processing_turn:
+				change_turn_display_name(round_turns[0].char_name)
+				var timer = Timer.new()
+				timer.set_wait_time(1)
+				timer.set_one_shot(true)
+				get_node("/root").add_child(timer)
+				timer.start()
+				yield(timer, "timeout")
+				timer.queue_free()
+				turn_time_limit -= 1
+				if turn_time_limit <= 0:
+					print("turn didn't end before limit moving on")
+					if len(round_turns) > 0: round_turns[0].processing_turn = false
+					break
+			print('turn over')
+			round_turns.remove(0)
+		change_turn_display_name("Player")
+		processing_turns = false
+		end_turn()
 
 
-func _on_end_turn_button_pressed():
+func end_turn():
+	if processing_turns:
+		return
 	var p = get_node("/root/player")
 	if meta.player_turn: 
-		p.stop_turn()
 		meta.player_turn = false
+		p.stop_turn()
 		round_turns = []
 		for enm in get_tree().get_nodes_in_group("enemies"):
 			round_turns.append(enm)
 		process_enemy_turns()
 	else:
+		meta.player_turn = true
 		p.start_turn()
 		print('player turn')
+
+
+func change_static_battle_ui(action):
+	if action == "change_turns":
+		pass
+
+
+func change_turn_display_name(char_name):
+	var turn_text = "Player Turn" if meta.player_turn else char_name + "'s Turn"
+	$text_overlay/turn_text.set_text(turn_text)
+
+
+func _on_end_turn_button_pressed():
+	if meta.player_turn:
+		end_turn()
 
 func _on_end_turn_button_mouse_entered():
 	pass # Replace with function body.
