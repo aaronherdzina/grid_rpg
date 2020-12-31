@@ -4,12 +4,12 @@ var test_lvl = {
 	"cols": 6,
 	"rows": 8,
 	
-	"tile_list": ["move", "move", "move", "move", "move", "move", "move", "move",
+	"tile_list": ["move", "move", "enemy spawn", "move", "move", "move", "enemy spawn", "move",
 				"move", "wall", "wall", "wall", "wall", "wall", "wall", "wall",
-				"move", "move", "move", "move", "move", "move", "move", "move",
-				"move", "move", "move", "move", "move", "move", "move", "move",
+				"move", "enemy spawn", "move", "move", "move", "move", "move", "move",
+				"move", "move", "move", "move", "enemy spawn", "move", "move", "move",
 				"wall", "wall", "wall", "wall", "wall", "wall", "wall", "move",
-				"move", "move", "move", "move", "move", "move", "move", "move"]
+				"move", "player spawn", "move", "move", "move", "move", "move", "move"]
 	}
 
 # debug for pathfinding tests
@@ -30,6 +30,7 @@ var enms = 5
 var level_astar = null
 var current_enm_count = 0
 var processing_turns = false
+var spawn_types_display_speed = .07
 # Called when the node enters the scene tree for the first time.
 func _ready():
 	pass
@@ -88,33 +89,28 @@ func spawn_premade_tiles(lvl_obj):
 				t.get_node("debug_info").visible = true
 				t.get_node("debug_info").set_text(tile_info)
 
-	print('level_astar ' + str(level_astar))
 	set_tile_neighbors(row, col)
-	var i = 0
+	map_tiles(lvl_obj)
+	# call to ensure we wait longer than the delay in map_tiles() or we have a race condition
+	var timer1 = Timer.new()
+	timer1.set_wait_time(len(level_tiles) * (spawn_types_display_speed * 1.5))
+	timer1.set_one_shot(true)
+	get_node("/root").add_child(timer1)
+	timer1.start()
+	yield(timer1, "timeout")
+	timer1.queue_free()
 	for t in level_tiles:
-		if i < len(lvl_obj["tile_list"]):
-			var tile_type = lvl_obj["tile_list"][i]
-			t.map_tile_type(tile_type)
-		else:
-			break
-		i += 1
+		if t.spawn_enemies:
+			print("spawn enemy")
+			spawn_enemies(level_astar,  t, level_tiles[0])
+			var timer = Timer.new()
+			timer.set_wait_time(spawn_types_display_speed)
+			timer.set_one_shot(true)
+			get_node("/root").add_child(timer)
+			timer.start()
+			yield(timer, "timeout")
+			timer.queue_free()
 	spawn_player()
-	for _i in range(0, enms):
-		var timer = Timer.new()
-		timer.set_wait_time(1)
-		timer.set_one_shot(true)
-		get_node("/root").add_child(timer)
-		timer.start()
-		yield(timer, "timeout")
-		timer.queue_free()
-		var count = -1
-		for t in level_tiles:
-			count += 1
-			randomize()
-			if t.can_move:
-				if rand_range(0, 10) >= 9.4 or count >= len(level_tiles) * .99:
-					spawn_enemies(level_astar,  t, level_tiles[col+1])
-					break
 
 
 func spawn_tiles():
@@ -155,30 +151,59 @@ func spawn_tiles():
 				t.get_node("debug_info").visible = true
 				t.get_node("debug_info").set_text(tile_info)
 
-	print('level_astar ' + str(level_astar))
 	set_tile_neighbors(row, col)
+	map_tiles()
+	# call to ensure we wait longer than the delay in map_tiles() or we have a race condition
+	var timer1 = Timer.new()
+	timer1.set_wait_time(len(level_tiles) * (spawn_types_display_speed * 1.5))
+	timer1.set_one_shot(true)
+	get_node("/root").add_child(timer1)
+	timer1.start()
+	yield(timer1, "timeout")
+	timer1.queue_free()
 	for t in level_tiles:
-		if rand_range(0, 10) >= 8.5:
-			t.map_tile_type("wall")
-		else:
-			t.map_tile_type("")
+		if t.spawn_enemies:
+			spawn_enemies(level_astar,  t, level_tiles[0])
+			var timer = Timer.new()
+			timer.set_wait_time(spawn_types_display_speed)
+			timer.set_one_shot(true)
+			get_node("/root").add_child(timer)
+			timer.start()
+			yield(timer, "timeout")
+			timer.queue_free()
 	spawn_player()
-	for _i in range(0, enms):
-		var timer = Timer.new()
-		timer.set_wait_time(1)
-		timer.set_one_shot(true)
-		get_node("/root").add_child(timer)
-		timer.start()
-		yield(timer, "timeout")
-		timer.queue_free()
-		var count = -1
+
+
+func map_tiles(lvl_obj=null):
+	if lvl_obj:
+		var i = 0
 		for t in level_tiles:
-			count += 1
-			randomize()
-			if t.can_move:
-				if rand_range(0, 10) >= 7 or count >= len(level_tiles) * .99:
-					spawn_enemies(level_astar,  t, level_tiles[col+1])
-					break
+			if i <= len(lvl_obj["tile_list"]):
+				var tile_type = lvl_obj["tile_list"][i]
+				t.map_tile_type(tile_type)
+			else:
+				break
+			i += 1
+			var timer = Timer.new()
+			timer.set_wait_time(spawn_types_display_speed)
+			timer.set_one_shot(true)
+			get_node("/root").add_child(timer)
+			timer.start()
+			yield(timer, "timeout")
+			timer.queue_free()
+	else:
+		for t in level_tiles:
+			if rand_range(0, 10) >= 8.5:
+				t.map_tile_type("wall")
+			else:
+				t.map_tile_type("")
+			var timer = Timer.new()
+			timer.set_wait_time(spawn_types_display_speed)
+			timer.set_one_shot(true)
+			get_node("/root").add_child(timer)
+			timer.start()
+			yield(timer, "timeout")
+			timer.queue_free()
 
 
 func spawn_player():
@@ -214,7 +239,6 @@ func spawn_enemies(astar_path_obj, starting_tile, target_tile):
 	get_node("/root").add_child(e)
 	e.set_spawn_tile(starting_tile)
 	e.set_tile_target(target_tile)
-	e.set_navigation()
 	e.add_to_group("enemies")
 	e.char_name = meta.char_names[rand_range(0, len(meta.char_names) - 1)]
 	print('spawned: ' + e.char_name)
@@ -233,26 +257,26 @@ func set_tile_neighbors(row, col):
 
 func connect_astart_path_neightbors(astar_path_obj, tile_index, tile, row, col, tile_weight):
 	# We use the current tile's index as reference
-	var above_tile_idx = tile_index - 1
-	var right_tile_idx = tile_index + row
-	var below_tile_idx = tile_index + 1
-	var left_tile_idx = tile_index - row
-	var tile_count = len(level_tiles) - 1 # from 0
+	var above_tile_idx = tile_index - row
+	var right_tile_idx = tile_index + 1
+	var below_tile_idx = tile_index + row
+	var left_tile_idx = tile_index - 1
+	var tile_count = len(level_tiles)# from 0
 
 	# set initial spot
 	astar_path_obj.add_point(tile_index, tile.global_position, tile_weight)
 	# make sure point exists, node exists and make sure the
 	# index is not out of range or the tile array
-	if tile.row > 0 and astar_path_obj.has_point(above_tile_idx) and above_tile_idx >= 0 and above_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
+	if tile.col > 0 and astar_path_obj.has_point(above_tile_idx) and above_tile_idx >= 0 and above_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
 		astar_path_obj.connect_points(tile_index, above_tile_idx, true)
 
-	if tile.col < col - 1 and astar_path_obj.has_point(right_tile_idx) and right_tile_idx >= 0 and right_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
+	if tile.row < row and astar_path_obj.has_point(right_tile_idx) and right_tile_idx >= 0 and right_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
 		astar_path_obj.connect_points(tile_index, right_tile_idx, true)
 
-	if tile.row < row - 1 and astar_path_obj.has_point(below_tile_idx) and below_tile_idx >= 0 and below_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
+	if tile.col < col and astar_path_obj.has_point(below_tile_idx) and below_tile_idx >= 0 and below_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
 		astar_path_obj.connect_points(tile_index, below_tile_idx, true)
 
-	if tile.col > 0 and astar_path_obj.has_point(left_tile_idx) and left_tile_idx >= 0 and left_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
+	if tile.row > 0 and astar_path_obj.has_point(left_tile_idx) and left_tile_idx >= 0 and left_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
 		astar_path_obj.connect_points(tile_index, left_tile_idx, true)
 
 
@@ -291,6 +315,8 @@ func process_enemy_turns():
 
 func end_turn():
 	if processing_turns:
+		return
+	if not get_node("/root").has_node("player"):
 		return
 	var p = get_node("/root/player")
 	if meta.player_turn: 

@@ -3,7 +3,9 @@ extends Node2D
 # debug stuff for testing nav
 var is_end = false
 var is_start = true
-var can_move = true
+var can_move = false
+var spawn_player = false
+var spawn_enemies = false
 var index = 0
 var row = 0
 var col = 0
@@ -31,6 +33,7 @@ func _ready():
 func map_tile_type(tile_type):
 	var l = get_node("/root/level")
 	var weight =  meta.unccupied_tile_weight
+	can_move = true
 	if custom_weight:
 		weight = custom_weight
 
@@ -38,10 +41,19 @@ func map_tile_type(tile_type):
 	if tile_type == "move" or tile_type == "" or not tile_type:
 		l.level_astar.set_point_weight_scale(index, weight)
 		$Sprite.set_texture(main.BASIC_TILE)
-		can_move = true
+	elif tile_type == "enemy spawn":
+		l.level_astar.set_point_weight_scale(index, weight)
+		$Sprite.set_texture(main.ENEMY_SPAWN_TILE)
+		print('enemy spawn')
+		spawn_enemies = true
+	elif tile_type == "player spawn":
+		l.level_astar.set_point_weight_scale(index, weight)
+		$Sprite.set_texture(main.PLAYER_SPAWN_TILE)
+		print('player spawn')
+		spawn_player = true
 	else:
 		if not custom_weight: weight = meta.wall_tile_weight
-		print('wall')
+		print('wall ' + str(weight))
 		l.level_astar.set_point_weight_scale(index, weight)
 		$Sprite.set_texture(main.WALL_TILE)
 		can_move = false 
@@ -73,6 +85,8 @@ func _on_Button_pressed():
 
 
 func move_to_tile_on_press():
+	if not get_node("/root").has_node("player"):
+		return
 	var p = get_node("/root/player")
 	if meta.player_turn:
 		p.chosen_tile = self
@@ -81,6 +95,8 @@ func move_to_tile_on_press():
 
 func hover():
 	var l = get_node("/root/level")
+	if not get_node("/root").has_node("player"):
+		return
 	var player = get_node("/root/player")
 	var point_path = l.level_astar.get_id_path(player.current_tile.index, index)
 	var path = []
@@ -95,6 +111,8 @@ func hover():
 			n.z_index = 1
 
 	for p in point_path:
+		if l.level_astar.get_point_weight_scale(p) >= meta.max_weight:
+			return
 		for t in l.level_tiles:
 			if p == t.index and t != player.current_tile:
 				t.get_node("Sprite").modulate = Color(.9, .9, 1, 1)

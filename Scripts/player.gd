@@ -63,6 +63,8 @@ func set_navigation():
 	# we probably want to do this and just correct though then we have reference to the tile too
 
 	for p in point_path:
+		if l.level_astar.get_point_weight_scale(p) >= meta.max_weight:
+			return
 		for t in l.level_tiles:
 			if p == t.index and t.can_move:
 				path.append(t)
@@ -109,6 +111,9 @@ func _process(delta):
 	# note the path is a list of actual tiles 
 	if meta.player_turn and moving:
 		if path.size() > 0:
+			if not path[0].can_move:
+				path = []
+				return
 			var d = self.global_position.distance_to(path[0].global_position)
 			if d > 10:
 				position = self.global_position.linear_interpolate(path[0].global_position, (speed * delta)/d)
@@ -120,6 +125,8 @@ func _process(delta):
 				path.remove(0)
 				var stop_path = false
 				if len(path) > 0:
+					if not path[0].can_move:
+						stop_path = true
 					for enm in get_tree().get_nodes_in_group("enemies"):
 						if main.checkIfNodeDeleted(enm) == false and enm.current_tile and enm.current_tile.index == path[0].index:
 							stop_path = true

@@ -44,6 +44,8 @@ func set_navigation():
 	# WE seem to be adding path tile nodes in wrong order compared to astar point array
 	# we probably want to do this and just correct though then we have reference to the tile too
 	for p in point_path:
+		if l.level_astar.get_point_weight_scale(p) >= meta.max_weight:
+			return
 		for t in l.level_tiles:
 			if p == t.index and t.can_move:
 				path.append(t)

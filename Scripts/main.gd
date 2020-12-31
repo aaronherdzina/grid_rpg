@@ -4,9 +4,15 @@ const debug = true # for dev
 
 
 # TILES
-const BASIC_TILE = preload("res://Sprites/tiles/basic/gridrpgBasic.png")
-const WALL_TILE = preload("res://Sprites/tiles/basic/gridrpgWall.png")
-const MOUNTAIN_TILE = preload("res://Sprites/tiles/basic/gridrpgBasic.png")
+const BASIC_TILE = preload("res://Sprites/tiles/basic/white tile.png")
+const WALL_TILE = preload("res://Sprites/tiles/basic/dark tiles.png")
+const MOUNTAIN_TILE = preload("res://Sprites/tiles/basic/dark grey tile.png")
+const ENEMY_SPAWN_TILE = preload("res://Sprites/tiles/basic/dark grey tile.png")
+const PLAYER_SPAWN_TILE = preload("res://Sprites/tiles/basic/dark grey tile.png")
+
+
+
+
 #######
 
 
@@ -135,6 +141,8 @@ func handle_in_battle_input(action):
 		level.end_turn()
 	elif action == "back": 
 		if meta.player_turn:
+			if not get_node("/root").has_node("player"):
+				return
 			var player = get_node("/root/player")
 			player.reset_turn()
 
