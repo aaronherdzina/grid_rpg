@@ -64,7 +64,7 @@ func set_navigation():
 
 	for p in point_path:
 		for t in l.level_tiles:
-			if p == t.index:
+			if p == t.index and t.can_move:
 				path.append(t)
 				debug_idx_path.append(t.index)
 				break

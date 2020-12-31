@@ -45,7 +45,7 @@ func set_navigation():
 	# we probably want to do this and just correct though then we have reference to the tile too
 	for p in point_path:
 		for t in l.level_tiles:
-			if p == t.index:
+			if p == t.index and t.can_move:
 				path.append(t)
 				debug_idx_path.append(t.index)
 			if len(path) > move_distance:

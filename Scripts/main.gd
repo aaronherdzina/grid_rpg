@@ -143,7 +143,7 @@ func handle_main_menu_input(action):
 	if action == "start":
 		var l = LEVEL.instance()
 		get_node("/root").add_child(l)
-		l.spawn_tiles()
+		l.spawn_premade_tiles(l.test_lvl)
 		current_screen = 'battle'
 	elif action == "ui_quit":
 		if not waitToProcessMenuClick:
