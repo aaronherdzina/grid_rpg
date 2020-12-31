@@ -1,11 +1,10 @@
-[gd_scene load_steps=7 format=2]
+[gd_scene load_steps=6 format=2]
 
 [ext_resource path="res://Scripts/level.gd" type="Script" id=1]
 [ext_resource path="res://Sprites/General/blueDot.png" type="Texture" id=2]
-[ext_resource path="res://Sprites/General/wall.png" type="Texture" id=4]
-[ext_resource path="res://Sprites/General/basic tile.png" type="Texture" id=5]
+[ext_resource path="res://Sprites/tiles/basic/dark tile.png" type="Texture" id=3]
+[ext_resource path="res://Sprites/tiles/basic/new border grey tile.png" type="Texture" id=4]
 [ext_resource path="res://Sprites/UI/Untitled_Artwork 2.png" type="Texture" id=6]
-[ext_resource path="res://Sprites/tiles/basic/gridrpgWall.png" type="Texture" id=7]
 
 [node name="level" type="Node2D"]
 script = ExtResource( 1 )
@@ -14,14 +13,14 @@ script = ExtResource( 1 )
 z_index = -100
 
 [node name="Sprite2" type="Sprite" parent="background_imgs"]
-position = Vector2( 994.899, 497.803 )
-scale = Vector2( 1.28933, 0.837034 )
-texture = ExtResource( 4 )
+position = Vector2( 971.564, 589.727 )
+scale = Vector2( 21.8728, 15.1118 )
+texture = ExtResource( 3 )
 
 [node name="Sprite" type="Sprite" parent="background_imgs"]
-position = Vector2( 962.372, 540.23 )
-scale = Vector2( 0.938542, 0.526294 )
-texture = ExtResource( 5 )
+position = Vector2( 975.807, 552.958 )
+scale = Vector2( 17.2572, 12.0389 )
+texture = ExtResource( 4 )
 
 [node name="tile_container" type="Node2D" parent="."]
 
@@ -30,9 +29,9 @@ position = Vector2( 962.372, 995.23 )
 
 [node name="background" type="Sprite" parent="text_overlay"]
 modulate = Color( 0, 0, 0, 1 )
-position = Vector2( 1, 52.5 )
-scale = Vector2( 1, 0.124512 )
-texture = ExtResource( 5 )
+position = Vector2( -1.1214, 6.53815 )
+scale = Vector2( 16.4348, 1.43929 )
+texture = ExtResource( 4 )
 
 [node name="turn_text" type="Label" parent="text_overlay"]
 margin_left = -922.0
@@ -78,7 +77,6 @@ __meta__ = {
 [node name="Sprite" type="Sprite" parent="Button"]
 position = Vector2( 73.4475, 52.0774 )
 scale = Vector2( 1.14811, 0.805749 )
-texture = ExtResource( 7 )
 
 [node name="Label" type="Label" parent="."]
 margin_left = 43.0

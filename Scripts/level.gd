@@ -4,11 +4,11 @@ var test_lvl = {
 	"cols": 6,
 	"rows": 8,
 	
-	"tile_list": ["move", "move", "enemy spawn", "move", "move", "move", "enemy spawn", "move",
-				"move", "wall", "wall", "wall", "wall", "wall", "wall", "wall",
-				"move", "enemy spawn", "move", "move", "move", "move", "move", "move",
-				"move", "move", "move", "move", "enemy spawn", "move", "move", "move",
-				"wall", "wall", "wall", "wall", "wall", "wall", "wall", "move",
+	"tile_list": ["move", "move", "enemy spawn", "forest", "move", "move", "enemy spawn", "move",
+				"move", "move", "forest", "forest", "move", "move", "move", "wall",
+				"move", "enemy spawn", "move", "move", "move", "forest", "move", "move",
+				"move", "forest", "forest", "move", "enemy spawn", "move", "move", "move",
+				"move", "move", "forest", "forest", "move", "wall", "wall", "move",
 				"move", "player spawn", "move", "move", "move", "move", "move", "move"]
 	}
 
@@ -30,7 +30,7 @@ var enms = 5
 var level_astar = null
 var current_enm_count = 0
 var processing_turns = false
-var spawn_types_display_speed = .07
+var spawn_types_display_speed = .03
 # Called when the node enters the scene tree for the first time.
 func _ready():
 	pass
@@ -64,10 +64,9 @@ func spawn_premade_tiles(lvl_obj):
 	
 	for c in range(0, col):
 		for r in range(0, row):
-			tile_index += 1
 			var t = main.TILE.instance()
-			var tile_map = $tile_container
 			var tile_info = ""
+			tile_index += 1
 			get_node("tile_container").add_child(t)
 			t.row = r
 			t.col = c
@@ -89,6 +88,7 @@ func spawn_premade_tiles(lvl_obj):
 				t.get_node("debug_info").visible = true
 				t.get_node("debug_info").set_text(tile_info)
 
+	set_points(level_astar, level_tiles)
 	set_tile_neighbors(row, col)
 	map_tiles(lvl_obj)
 	# call to ensure we wait longer than the delay in map_tiles() or we have a race condition
@@ -150,7 +150,7 @@ func spawn_tiles():
 			if main.debug: 
 				t.get_node("debug_info").visible = true
 				t.get_node("debug_info").set_text(tile_info)
-
+	set_points(level_astar, level_tiles)
 	set_tile_neighbors(row, col)
 	map_tiles()
 	# call to ensure we wait longer than the delay in map_tiles() or we have a race condition
@@ -172,6 +172,11 @@ func spawn_tiles():
 			yield(timer, "timeout")
 			timer.queue_free()
 	spawn_player()
+
+
+func set_points(astar_path_obj, list, tile_weight=meta.unccupied_tile_weight):
+	for t in list:
+		astar_path_obj.add_point(t.index, t.global_position, tile_weight)
 
 
 func map_tiles(lvl_obj=null):
@@ -262,18 +267,18 @@ func connect_astart_path_neightbors(astar_path_obj, tile_index, tile, row, col, 
 	var below_tile_idx = tile_index + row
 	var left_tile_idx = tile_index - 1
 	var tile_count = len(level_tiles)# from 0
-
+	# tiles set for row in for each col, row set on x, col on y
 	# set initial spot
-	astar_path_obj.add_point(tile_index, tile.global_position, tile_weight)
 	# make sure point exists, node exists and make sure the
 	# index is not out of range or the tile array
+	print('right_tile_idx ' + str(tile_index) + ' v right_tile_idx ' + str(right_tile_idx))
 	if tile.col > 0 and astar_path_obj.has_point(above_tile_idx) and above_tile_idx >= 0 and above_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
 		astar_path_obj.connect_points(tile_index, above_tile_idx, true)
 
-	if tile.row < row and astar_path_obj.has_point(right_tile_idx) and right_tile_idx >= 0 and right_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
+	if tile.row < row-1 and astar_path_obj.has_point(right_tile_idx) and right_tile_idx >= 0 and right_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
 		astar_path_obj.connect_points(tile_index, right_tile_idx, true)
 
-	if tile.col < col and astar_path_obj.has_point(below_tile_idx) and below_tile_idx >= 0 and below_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
+	if tile.col < col-1 and astar_path_obj.has_point(below_tile_idx) and below_tile_idx >= 0 and below_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
 		astar_path_obj.connect_points(tile_index, below_tile_idx, true)
 
 	if tile.row > 0 and astar_path_obj.has_point(left_tile_idx) and left_tile_idx >= 0 and left_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:

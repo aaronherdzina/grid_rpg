@@ -1,18 +1,24 @@
 extends Node
 
-const debug = true # for dev
+const debug = false # for dev
 
 
 # TILES
-const BASIC_TILE = preload("res://Sprites/tiles/basic/white tile.png")
-const WALL_TILE = preload("res://Sprites/tiles/basic/dark tiles.png")
-const MOUNTAIN_TILE = preload("res://Sprites/tiles/basic/dark grey tile.png")
-const ENEMY_SPAWN_TILE = preload("res://Sprites/tiles/basic/dark grey tile.png")
-const PLAYER_SPAWN_TILE = preload("res://Sprites/tiles/basic/dark grey tile.png")
+const BASIC_TILE = preload("res://Sprites/tiles/basic/new border grey tile.png")
+const WALL_TILE = preload("res://Sprites/tiles/basic/dark tile.png")
+
+const ENEMY_SPAWN_TILE = preload("res://Sprites/tiles/basic/new border grey tile.png")
+const PLAYER_SPAWN_TILE = preload("res://Sprites/tiles/basic/new border grey tile.png")
+
+const FOREST_PATH_TILE_1 = preload("res://Sprites/tiles/environment/forest path til.png")
+const FOREST_TILE_1 = preload("res://Sprites/tiles/environment/forest tile 1.png")
+const FOREST_TILE_2 = preload("res://Sprites/tiles/environment/forest tile 2.png")
 
 
+var basic_forest_tiles = [FOREST_TILE_1, FOREST_TILE_2]
+var special_forest_tiles = [FOREST_PATH_TILE_1]
 
-
+const MOUNTAIN_TILE = preload("res://Sprites/tiles/basic/new border grey tile.png")
 #######
 
 

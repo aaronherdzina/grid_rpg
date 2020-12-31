@@ -2,15 +2,15 @@
 
 importer="texture"
 type="StreamTexture"
-path="res://.import/gridrpgBasic.png-ab602281fcd50fdab0a8540efdae0265.stex"
+path="res://.import/forest path til.png-f750b5351a51b325c97a8709456c314f.stex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://Sprites/tiles/basic/gridrpgBasic.png"
-dest_files=[ "res://.import/gridrpgBasic.png-ab602281fcd50fdab0a8540efdae0265.stex" ]
+source_file="res://Sprites/tiles/environment/forest path til.png"
+dest_files=[ "res://.import/forest path til.png-f750b5351a51b325c97a8709456c314f.stex" ]
 
 [params]
 

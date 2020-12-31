@@ -8,6 +8,7 @@ var current_tile = null
 var processing_turn = false
 var id = 0
 var char_name = "Enemy"
+var chasing_player = false
 var move_distance = rand_range(2, 5)
 
 
@@ -83,10 +84,25 @@ func stop_turn():
 
 func move():
 	var player = get_node("/root/player")
-	print('moving from: ' + str(id) + ' to: ' + str(player.current_tile.index))
-	var nearby_tile = meta.get_closest_adjacent_tile(self, player.current_tile)
-	print('nearby_tile: ' + str(nearby_tile))
-	set_tile_target(nearby_tile if nearby_tile else player.current_tile)
+	var nearby_tile = meta.get_closest_adjacent_tile(self, current_tile, (not chasing_player), false)
+	chasing_player = false
+	for n in current_tile.neighbors:
+		if not chasing_player:
+			if n.index == player.current_tile.index:
+				chasing_player = true
+		else:
+			# check double neighbors when CONTINUING CHASE
+			for next_n in n.neighbors:
+				if n.index == player.current_tile.index or\
+				   next_n.index == player.current_tile.index:
+					break
+
+	if chasing_player:
+		print('chasing player')
+		nearby_tile = meta.get_closest_adjacent_tile(self, player.current_tile)
+	else:
+		print('nearby_tile: ' + str(nearby_tile))
+	set_tile_target(nearby_tile if nearby_tile else current_tile)
 	set_navigation()
 
 

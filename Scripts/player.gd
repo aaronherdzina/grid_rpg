@@ -14,6 +14,8 @@ var remaining_move = 3
 var health = 10
 var starting_turn_health = 10
 var processing_turn = false
+var current_def = 0
+var default_def = 0
 
 
 func _ready():
@@ -90,12 +92,19 @@ func start_turn():
 		moving = false
 	remaining_move = move_distance
 	turn_start_tile = current_tile
+	if current_def > default_def:
+		current_def = default_def
+	if current_tile.forest_path:
+		remaining_move += 2
 
 
 func stop_turn():
 	var l = get_node("/root/level")
 	l.level_astar.set_point_weight_scale(current_tile.index, meta.occupied_tile_weight)
 	processing_turn = false
+	if current_tile.defense_buff > 0 and current_def <= default_def:
+		current_def += current_tile.defense_buff
+		print('got forest bonus')
 
 
 func move():

@@ -1,8 +1,7 @@
-[gd_scene load_steps=4 format=2]
+[gd_scene load_steps=3 format=2]
 
 [ext_resource path="res://Scripts/tile.gd" type="Script" id=1]
-[ext_resource path="res://Sprites/tiles/basic/gridrpgBasic.png" type="Texture" id=2]
-[ext_resource path="res://Sprites/tiles/basic/white tile.png" type="Texture" id=3]
+[ext_resource path="res://Sprites/tiles/basic/new border grey tile.png" type="Texture" id=2]
 
 [node name="tile" type="Node2D"]
 script = ExtResource( 1 )
@@ -24,7 +23,7 @@ __meta__ = {
 
 [node name="Sprite" type="Sprite" parent="."]
 position = Vector2( 0, -0.176781 )
-texture = ExtResource( 3 )
+texture = ExtResource( 2 )
 
 [node name="debug_info" type="Label" parent="."]
 visible = false

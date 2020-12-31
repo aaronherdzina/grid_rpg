@@ -18,6 +18,13 @@ var too_far_background_color = Color(1, .3, .3, 1)
 var current_tile_background_color = Color(.2, .1, .4, 1)
 
 var custom_weight = null
+
+var forest = false
+var special = false
+var forest_path = false
+
+var defense_buff = 0
+var description = ""
 ##
 
 # Called when the node enters the scene tree for the first time.
@@ -51,12 +58,25 @@ func map_tile_type(tile_type):
 		$Sprite.set_texture(main.PLAYER_SPAWN_TILE)
 		print('player spawn')
 		spawn_player = true
+	elif tile_type == "forest":
+		l.level_astar.set_point_weight_scale(index, weight)
+		$Sprite.set_texture(main.basic_forest_tiles[rand_range(0, len(main.basic_forest_tiles))])
+		forest = true
+		defense_buff += 1
+		description = "+1 Defense"
+	elif tile_type == "forest path":
+		l.level_astar.set_point_weight_scale(index, weight)
+		$Sprite.set_texture(main.FOREST_PATH_TILE_1)
+		forest = true
+		special = true
+		forest_path = true
+		description = "+2 Move starting turn here"
 	else:
 		if not custom_weight: weight = meta.wall_tile_weight
 		print('wall ' + str(weight))
 		l.level_astar.set_point_weight_scale(index, weight)
 		$Sprite.set_texture(main.WALL_TILE)
-		can_move = false 
+		can_move = false
 
 
 func get_tile_neighbors(target=null):
@@ -73,7 +93,6 @@ func get_tile_neighbors(target=null):
 
 func _on_Button_pressed():
 	var l = get_node("/root/level")
-	var debug_text = ""
 
 	if main.debug:
 		for t in l.level_tiles:
