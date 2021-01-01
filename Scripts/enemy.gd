@@ -67,6 +67,7 @@ func start_turn():
 	var l = get_node("/root/level")
 	var default_weight =  meta.unccupied_tile_weight if current_tile.can_move else meta.wall_tile_weight
 	l.level_astar.set_point_weight_scale(current_tile.index, default_weight)
+	current_tile.enm_on_tile = false
 	# process turn
 	# consider delay to move animations
 	move()
@@ -79,6 +80,7 @@ func stop_turn():
 	# astar set point of current tile to
 	var l = get_node("/root/level")
 	l.level_astar.set_point_weight_scale(current_tile.index, meta.occupied_tile_weight)
+	current_tile.enm_on_tile = true
 	processing_turn = false
 
 

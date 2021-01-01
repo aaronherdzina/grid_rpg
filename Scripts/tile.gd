@@ -11,12 +11,18 @@ var row = 0
 var col = 0
 var neighbors = []
 var player_spawn = false
-var highlight_background_color = Color(1, 1, .5, 1)
-var path_highlight_background_color = Color(.5, 0, 1, 1)
+var highlight_background_color = Color(1, 1, .5, .7)
+var path_highlight_background_color = Color(.8, .8, 1, .7)
 var default_background_color = Color(0, 0, 0, 0)
-var too_far_background_color = Color(1, .3, .3, 1)
-var current_tile_background_color = Color(.2, .1, .4, 1)
+var too_far_background_color = Color(1, .3, .3, .2)
+var current_tile_background_color = Color(.3, .3, .6, .7)
 
+var highlight_tile_color = Color(1, 1, .8, 1)
+var path_highlight_tile_color = Color(.8, .8, 1, 1)
+var too_far_tile_color = Color(1, .8, .8, 1)
+
+var player_on_tile = false
+var enm_on_tile = false
 var custom_weight = null
 
 var forest = false
@@ -38,6 +44,8 @@ func _ready():
 
 
 func map_tile_type(tile_type):
+	if not get_node("/root").has_node("level"):
+		return
 	var l = get_node("/root/level")
 	var weight =  meta.unccupied_tile_weight
 	can_move = true
@@ -92,6 +100,8 @@ func get_tile_neighbors(target=null):
 
 
 func _on_Button_pressed():
+	if not get_node("/root").has_node("level"):
+		return
 	var l = get_node("/root/level")
 
 	if main.debug:
@@ -113,18 +123,27 @@ func move_to_tile_on_press():
 
 
 func hover():
-	var l = get_node("/root/level")
 	if not get_node("/root").has_node("player"):
 		return
+	if not get_node("/root").has_node("level"):
+		return
+	var l = get_node("/root/level")
 	var player = get_node("/root/player")
 	var point_path = l.level_astar.get_id_path(player.current_tile.index, index)
 	var path = []
 	var debug_idx_path = []
+	var tile_hover_color = Color(.7, .7, 1, 1)
+	if not can_move:
+		tile_hover_color = Color(.5, .5, .5, 1)
+	
+	if enm_on_tile:
+		tile_hover_color = Color(1, .5, .5, 1)
 
 	player.current_tile.get_node("background").modulate = current_tile_background_color
 	player.current_tile.z_index = 1
 	player.current_tile.modulate = Color(1, 1, 1, 1)
 
+	self.modulate = tile_hover_color
 	for n in neighbors:
 		if n.can_move:
 			n.z_index = 1
@@ -139,20 +158,26 @@ func hover():
 				debug_idx_path.append(t.index)
 				if len(path) > player.remaining_move:
 					t.z_index = 1
-					t.get_node("background").modulate = too_far_background_color
+					# t.get_node("background").modulate = too_far_background_color
+					t.modulate = too_far_tile_color
 				elif len(path) == player.remaining_move: # full move
 					t.get_node("background").modulate = highlight_background_color
+					t.modulate = highlight_tile_color
 					t.z_index = 3
 				else:
 					t.z_index = 2
 					t.get_node("background").modulate = path_highlight_background_color
+					t.modulate = path_highlight_tile_color
 				break
 	z_index = 4
 
 
 func exit_hover():
+	if not get_node("/root").has_node("level"):
+		return
 	var l = get_node("/root/level")
 	for t in l.level_tiles:
+		t.modulate = Color(1, 1, 1, 1)
 		t.get_node("background").modulate = default_background_color
 		t.get_node("Sprite").modulate = Color(1, 1, 1, 1)
 		t.z_index = 0

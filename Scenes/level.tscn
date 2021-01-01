@@ -6,7 +6,9 @@
 [ext_resource path="res://Sprites/tiles/basic/new border grey tile.png" type="Texture" id=4]
 [ext_resource path="res://Sprites/UI/Untitled_Artwork 2.png" type="Texture" id=6]
 
-[node name="level" type="Node2D"]
+[node name="level" type="Node2D" groups=[
+"levels",
+]]
 script = ExtResource( 1 )
 
 [node name="background_imgs" type="Node2D" parent="."]

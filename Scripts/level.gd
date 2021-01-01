@@ -6,12 +6,23 @@ var test_lvl = {
 	
 	"tile_list": ["move", "move", "enemy spawn", "forest", "move", "move", "enemy spawn", "move",
 				"move", "move", "forest", "forest", "move", "move", "move", "wall",
-				"move", "enemy spawn", "move", "move", "move", "forest", "move", "move",
+				"move", "enemy spawn", "forest path", "move", "move", "forest", "move", "move",
 				"move", "forest", "forest", "move", "enemy spawn", "move", "move", "move",
 				"move", "move", "forest", "forest", "move", "wall", "wall", "move",
 				"move", "player spawn", "move", "move", "move", "move", "move", "move"]
 	}
 
+var random_lvl = {
+	"cols": 0,
+	"rows": 0,
+	
+	"tile_list": []
+	}
+var max_lvl_cols = 6
+var min_lvl_cols = 4
+
+var max_lvl_rows = 11
+var min_lvl_rows = 5
 # debug for pathfinding tests
 
 var path_end_tile = null
@@ -40,6 +51,14 @@ func _ready():
 """
 set a list of moveable tiles (and non player or anything else we wouldn't want as spawnable tiles) so we can use this to randpmly spawn level_tiles[rand_range(0, len(level_tiles) - 1)]
 """
+func remove_tiles():
+	for t in level_tiles:
+		if main.checkIfNodeDeleted(t) == false:
+			t.queue_free()
+	for tile in get_tree().get_nodes_in_group("tiles"):
+		if main.checkIfNodeDeleted(tile) == false:
+			tile.queue_free()
+	level_tiles = []
 
 
 func spawn_premade_tiles(lvl_obj):
@@ -59,6 +78,7 @@ func spawn_premade_tiles(lvl_obj):
 
 	var tile_index = -1
 
+	print('lvl_obj ' + str(lvl_obj))
 	level_astar = AStar2D.new()
 	#var res = astar.get_id_path(1, 3) # Returns [1, 2, 3]
 	
@@ -117,6 +137,7 @@ func spawn_tiles():
 	randomize()
 	var col = meta.current_level_cols
 	var row = meta.current_level_rows
+	remove_tiles()
 	#if not starting_tile:
 	#	starting_tile = get_node("starting_tile")
 
@@ -172,6 +193,48 @@ func spawn_tiles():
 			yield(timer, "timeout")
 			timer.queue_free()
 	spawn_player()
+
+func set_random_level(lvl_obj):
+	randomize()
+	lvl_obj["cols"] = floor(rand_range(min_lvl_cols, max_lvl_cols))
+	lvl_obj["rows"] = floor(rand_range(min_lvl_rows, max_lvl_rows))
+	
+	var tile_count  = lvl_obj["cols"] * lvl_obj["rows"]
+	var tile_types = []
+	var forest_chance = .25
+	var forest_path_chance = .14
+	var wall_chance = .4
+	var wall_limit = tile_count * .25
+	var player_spawned = false
+	var enemy_spawns = 1 + (tile_count * .1)
+	
+	for i in range(0, tile_count * forest_chance):
+		tile_types.append("forest")
+	for i in range(0, tile_count * forest_path_chance):
+		wall_limit -= 1
+		tile_types.append("wall")
+		if wall_limit <= 0:
+			break
+	for i in range(0, enemy_spawns):
+		enemy_spawns -= 1
+		tile_types.append("enemy spawn")
+		if enemy_spawns <= 0:
+			break
+	
+	var left_over_tiles = tile_count - len(tile_types) - 1
+	if left_over_tiles > 0:
+		for i in range(0, left_over_tiles):
+			tile_types.append("move")
+	
+	for i in range(0, tile_count):
+		if not player_spawned:
+			if rand_range(0, 10) >= 8.5 or i >= tile_count * .70:
+				player_spawned = true
+				lvl_obj["tile_list"].append("player spawn")
+			else:
+				lvl_obj["tile_list"].append(tile_types[rand_range(0, len(tile_types) - 1)])
+		else:
+			lvl_obj["tile_list"].append(tile_types[rand_range(0, len(tile_types) - 1)])
 
 
 func set_points(astar_path_obj, list, tile_weight=meta.unccupied_tile_weight):

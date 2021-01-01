@@ -41,15 +41,6 @@ func set_spawn_tile(target_node):
 	turn_start_tile = target_node
 	target_pos = target_node.global_position
 
-
-func reset_turn():
-	path = []
-	remaining_move = move_distance
-	health = starting_turn_health
-	current_tile = turn_start_tile
-	position = turn_start_tile.global_position
-	chosen_tile = turn_start_tile
-	target_pos = turn_start_tile.global_position
 	
 
 
@@ -83,19 +74,35 @@ func set_navigation():
 		#path[-1].modulate = Color(1, 1, 0, 1)
 
 
+func handle_start_and_reset_vars():
+	remaining_move = move_distance
+	if current_def > default_def:
+		current_def = default_def
+	if current_tile.forest_path:
+		remaining_move += 2
+	if moving:
+		moving = false
+	
+
+
+func reset_turn():
+	path = []
+	health = starting_turn_health
+	current_tile = turn_start_tile
+	position = turn_start_tile.global_position
+	chosen_tile = turn_start_tile
+	target_pos = turn_start_tile.global_position
+	handle_start_and_reset_vars()
+
+
 func start_turn():
 	# start turn
 	var l = get_node("/root/level")
 	var default_weight =  meta.unccupied_tile_weight if current_tile.can_move else meta.wall_tile_weight
 	l.level_astar.set_point_weight_scale(current_tile.index, default_weight)
-	if moving:
-		moving = false
-	remaining_move = move_distance
+	current_tile.player_on_tile = false
 	turn_start_tile = current_tile
-	if current_def > default_def:
-		current_def = default_def
-	if current_tile.forest_path:
-		remaining_move += 2
+	handle_start_and_reset_vars()
 
 
 func stop_turn():
@@ -105,6 +112,7 @@ func stop_turn():
 	if current_tile.defense_buff > 0 and current_def <= default_def:
 		current_def += current_tile.defense_buff
 		print('got forest bonus')
+	current_tile.player_on_tile = true
 
 
 func move():
