@@ -32,6 +32,47 @@ func _ready():
 #	pass
 
 
+func get_character_display_text(character):
+	var char_name = str(character.char_name)
+	var character_stats = " -- " + str(character.char_name) + " -- "
+	
+	character_stats += "\nHP: " + str(character.health)
+	if character.health < character.starting_turn_health:
+		character_stats += " / " + str(character.starting_turn_health)
+	character_stats += " ---- DEF: " + str(character.defense)
+
+	character_stats += "\nEnergy: " + str(character.energy)
+	if character.energy < character.default_energy:
+		character_stats += " / " + str(character.default_energy)
+
+	character_stats += "\nMove: " + str(character.move_distance)
+	if character.move_distance < character.remaining_move:
+		character_stats += " / " + str(character.remaining_move)
+	
+	character_stats += " ---- ATK: " + str(character.attack)
+	if character.attack < character.default_attack:
+		character_stats += " / " + str(character.default_attack)
+
+	character_stats += "\nDMG: " + str(character.damage)
+	if character.damage < character.default_damage:
+		character_stats += " / " + str(character.default_damage)
+
+	return character_stats
+
+
+
+func get_adjacent_tiles_in_distance(tile=null, distance=1):
+	var l = get_node("/root/level")
+	var all_adjacent_tiers = []
+	for i in range(0, distance):
+		var point_neighbors = []
+		point_neighbors = l.level_astar.get_point_connections(tile.index)
+		for point_n in point_neighbors:
+			for t in l.level_tiles:
+				if point_n == t.index:
+					all_adjacent_tiers.append(t)
+
+
 func get_closest_adjacent_tile(starting_node, target_node, random=false, is_player=false):
 	""" Get closest tile based on adjacent tiles. target_node needs to be a tile """
 	var lowest_cost = null

@@ -18,10 +18,11 @@ var random_lvl = {
 	
 	"tile_list": []
 	}
-var max_lvl_cols = 6
+
+var max_lvl_cols = 7
 var min_lvl_cols = 4
 
-var max_lvl_rows = 11
+var max_lvl_rows = 20
 var min_lvl_rows = 5
 # debug for pathfinding tests
 
@@ -35,21 +36,25 @@ var bottom_tiles = []
 var left_tiles = []
 var right_tiles = []
 var round_turns = []
-var tile_gap = 145
-
+var tile_gap = 125
+var far_tile_gap_setting = 150
+var far_gap_tile_outline_size = 1.03
+var close_tile_gap_setting = 125
+var close_gap_tile_outline_size = 1.06
 var enms = 5
 var level_astar = null
 var current_enm_count = 0
 var processing_turns = false
-var spawn_types_display_speed = .03
+var spawn_types_display_speed = .01
 # Called when the node enters the scene tree for the first time.
+
+
 func _ready():
 	pass
 
 
-
 """
-set a list of moveable tiles (and non player or anything else we wouldn't want as spawnable tiles) so we can use this to randpmly spawn level_tiles[rand_range(0, len(level_tiles) - 1)]
+ Because we'll have a camera have a setting for tile gap 104 and tile gap 150 for visual
 """
 func remove_tiles():
 	for t in level_tiles:
@@ -62,12 +67,12 @@ func remove_tiles():
 
 
 func spawn_premade_tiles(lvl_obj):
+	randomize()
 	""" lvl_obj example:
 	lvl_obj = {
 		tile_list = [],
 		cols = 7,
 		rows = 6
-		
 	}
 	"""
 	var col = lvl_obj["cols"]
@@ -81,7 +86,13 @@ func spawn_premade_tiles(lvl_obj):
 	print('lvl_obj ' + str(lvl_obj))
 	level_astar = AStar2D.new()
 	#var res = astar.get_id_path(1, 3) # Returns [1, 2, 3]
+	tile_gap = close_tile_gap_setting if rand_range(0, 1) >= .5 else far_tile_gap_setting
 	
+	var shadow_noise_x = 0
+	var shadow_noise_y = 0
+	var shadow_noise_vel = 1.2
+	var shadow_max_x = 12
+	var shadow_max_y = 12
 	for c in range(0, col):
 		for r in range(0, row):
 			var t = main.TILE.instance()
@@ -92,12 +103,26 @@ func spawn_premade_tiles(lvl_obj):
 			t.col = c
 			level_tiles.append(t)
 			t.index = tile_index
+			shadow_noise_x += rand_range(-shadow_noise_vel, shadow_noise_vel)
+			shadow_noise_y += rand_range(-shadow_noise_vel, shadow_noise_vel)
+			
+			if shadow_noise_x > shadow_max_x:
+				shadow_noise_x = shadow_max_x
+			if shadow_noise_x < -shadow_max_x:
+				shadow_max_x = -shadow_max_x
 
+			if shadow_noise_y > shadow_max_y:
+				shadow_noise_y = shadow_max_y
+			if shadow_noise_y < -shadow_max_y:
+				shadow_noise_y = -shadow_max_y
+			
+			print('Vector2(shadow_noise_x, shadow_noise_y) ' + str(Vector2(shadow_noise_x, shadow_noise_y)))
+			t.get_node("shadow").position = Vector2(shadow_noise_x, shadow_noise_y)
 			if main.debug: tile_info += " |index " + str(tile_index)
 
 			if not starting_tile:
 				starting_tile = t
-				t.position = Vector2(tile_gap * 2.2, tile_gap * .75)
+				t.position = Vector2(tile_gap * 2.8, tile_gap * .75)
 			else:
 				t.position = Vector2(starting_tile.global_position.x +\
 									(r * tile_gap),\
@@ -158,7 +183,6 @@ func spawn_tiles():
 			level_tiles.append(t)
 			t.index = tile_index
 
-
 			if not starting_tile:
 				starting_tile = t
 				t.position = Vector2(tile_gap * 2.2, tile_gap * .75)
@@ -194,9 +218,10 @@ func spawn_tiles():
 			timer.queue_free()
 	spawn_player()
 
+
 func set_random_level(lvl_obj):
 	randomize()
-	lvl_obj["cols"] = floor(rand_range(min_lvl_cols, max_lvl_cols))
+	lvl_obj["cols"] = max_lvl_cols#floor(rand_range(min_lvl_cols, max_lvl_cols))
 	lvl_obj["rows"] = floor(rand_range(min_lvl_rows, max_lvl_rows))
 	
 	var tile_count  = lvl_obj["cols"] * lvl_obj["rows"]
@@ -206,7 +231,7 @@ func set_random_level(lvl_obj):
 	var wall_chance = .4
 	var wall_limit = tile_count * .25
 	var player_spawned = false
-	var enemy_spawns = 1 + (tile_count * .1)
+	var enemy_spawns = 1 + (tile_count * .015)
 	
 	for i in range(0, tile_count * forest_chance):
 		tile_types.append("forest")
@@ -299,7 +324,7 @@ func spawn_player():
 					spawn_tile = t
 
 	p.set_spawn_tile(spawn_tile)
-	change_turn_display_name("Player")
+	change_turn_display_name(p)
 
 
 func spawn_enemies(astar_path_obj, starting_tile, target_tile):
@@ -314,6 +339,8 @@ func spawn_enemies(astar_path_obj, starting_tile, target_tile):
 	if main.debug:
 		e.get_node("Sprite/debug_info").visible = true
 		e.get_node("Sprite/debug_info").set_text(str(e.id))
+	else:
+		e.get_node("Sprite/debug_info").visible = false
 	current_enm_count += 1
 
 
@@ -361,7 +388,7 @@ func process_enemy_turns():
 			round_turns[0].processing_turn = true
 			round_turns[0].start_turn()
 			while round_turns[0].processing_turn:
-				change_turn_display_name(round_turns[0].char_name)
+				change_turn_display_name(round_turns[0])
 				var timer = Timer.new()
 				timer.set_wait_time(1)
 				timer.set_one_shot(true)
@@ -376,7 +403,7 @@ func process_enemy_turns():
 					break
 			print('turn over')
 			round_turns.remove(0)
-		change_turn_display_name("Player")
+		change_turn_display_name(get_node("/root/player"))
 		processing_turns = false
 		end_turn()
 
@@ -405,9 +432,9 @@ func change_static_battle_ui(action):
 		pass
 
 
-func change_turn_display_name(char_name):
-	var turn_text = "Player Turn" if meta.player_turn else char_name + "'s Turn"
-	$text_overlay/turn_text.set_text(turn_text)
+func change_turn_display_name(character):
+	var character_stats = meta.get_character_display_text(character)
+	$text_overlay/character_stats.set_text(character_stats)
 
 
 func _on_end_turn_button_pressed():

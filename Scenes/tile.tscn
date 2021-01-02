@@ -6,12 +6,21 @@
 [node name="tile" type="Node2D" groups=[
 "tiles",
 ]]
+scale = Vector2( 0.95, 0.95 )
 script = ExtResource( 1 )
 
 [node name="shadow" type="Sprite" parent="."]
-modulate = Color( 0, 0, 0, 0.196078 )
-position = Vector2( -3.09358, 2.47486 )
-scale = Vector2( 1.04691, 1.04552 )
+modulate = Color( 0, 0, 0, 0.529412 )
+position = Vector2( -5.901, -5 )
+scale = Vector2( 1.11, 1.11 )
+texture = ExtResource( 2 )
+__meta__ = {
+"_editor_description_": ""
+}
+
+[node name="outline3" type="Sprite" parent="shadow"]
+modulate = Color( 0.0980392, 0.0980392, 0.0980392, 1 )
+position = Vector2( 6.12765, 4.3309 )
 texture = ExtResource( 2 )
 __meta__ = {
 "_editor_description_": ""
@@ -20,7 +29,7 @@ __meta__ = {
 [node name="outline2" type="Sprite" parent="."]
 modulate = Color( 0.0980392, 0.0980392, 0.0980392, 1 )
 position = Vector2( 0, -0.176781 )
-scale = Vector2( 1.03, 1.03 )
+scale = Vector2( 1.04, 1.04 )
 texture = ExtResource( 2 )
 __meta__ = {
 "_editor_description_": ""

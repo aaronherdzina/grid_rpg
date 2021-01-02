@@ -9,8 +9,47 @@ var processing_turn = false
 var id = 0
 var char_name = "Enemy"
 var chasing_player = false
-var move_distance = rand_range(2, 5)
 
+var move_distance = round(rand_range(2, 5))
+var health = 4
+var starting_turn_health = 4
+var attack = 1
+var damage = 3
+var defense = 0
+var can_attack = true
+var energy = 3
+
+var default_energy = 3
+var default_attack = 1
+var default_damage = 3
+var default_defense = 0
+var default_distance = move_distance
+var remaining_move = default_distance
+
+var battle_energy_debuff = 0
+var battle_attack_debuff = 0
+var battle_damage_debuff = 0
+var battle_defense_debuff = 0
+var battle_move_debuff = 0
+
+var alive = true
+
+func set_default_stats():
+	attack = default_attack - battle_attack_debuff
+	damage = default_damage - battle_damage_debuff
+	defense = default_defense - battle_defense_debuff
+	move_distance = default_distance - battle_move_debuff
+	energy = default_energy - battle_energy_debuff
+	if energy < 1:
+		energy = 1
+	if move_distance < 0:
+		move_distance = 0
+	if defense < 0:
+		defense = 0
+	if attack < 0:
+		attack = 0
+	if damage < 0:
+		damage = 0
 
 func _ready():
 	set_process(true)
@@ -58,12 +97,12 @@ func set_navigation():
 	#print('debug_idx_path is ' + str(debug_idx_path) + ' made from start' + str(current_tile.index) + ' to '  + str(target_tile.index) + ' with point array ' + str(point_path))
 	if path.size() > 0:
 		current_tile = path[0]
-		#path[0].modulate = Color(0, 0, .5, 1)
-		#path[-1].modulate = Color(1, 1, 0, 1)
 
 
 func start_turn():
 	# start turn
+	if energy <= 0:
+		set_default_stats()
 	var l = get_node("/root/level")
 	var default_weight =  meta.unccupied_tile_weight if current_tile.can_move else meta.wall_tile_weight
 	l.level_astar.set_point_weight_scale(current_tile.index, default_weight)
@@ -106,6 +145,23 @@ func move():
 		print('nearby_tile: ' + str(nearby_tile))
 	set_tile_target(nearby_tile if nearby_tile else current_tile)
 	set_navigation()
+
+
+func take_damage(attacker, attack_details):
+	var dmg = attack_details["damage"] 
+	var hold_defense = defense
+
+	if defense > 0:
+		defense -= dmg
+		dmg -= hold_defense
+		if defense < 0:
+			defense = 0
+
+	if dmg < 0:
+		dmg = 0
+	health - dmg
+	if health <= 0:
+		alive = false
 
 
 func _process(delta):

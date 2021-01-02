@@ -1,6 +1,7 @@
 extends Node2D
 
 var speed = rand_range(300, 450)
+var char_name = "Player"
 var path = []
 var target_pos = Vector2()
 var target_tile = null
@@ -14,12 +15,75 @@ var remaining_move = 3
 var health = 10
 var starting_turn_health = 10
 var processing_turn = false
-var current_def = 0
-var default_def = 0
+
+var attack = 2
+var damage = 3
+var defense = 0
+var can_attack = true
+var energy = 3
+
+var default_energy = 3
+var default_attack = 2
+var default_damage = 3
+var default_defense = 0
+var default_distance = 3
+
+var battle_energy_debuff = 0
+var battle_attack_debuff = 0
+var battle_damage_debuff = 0
+var battle_defense_debuff = 0
+var battle_move_debuff = 0
+var alive = true
+
+func set_default_stats():
+	attack = default_attack
+	damage = default_damage
+	defense = default_defense
+	move_distance = default_distance
+	energy = default_energy
+	if energy < 1:
+		energy = 1
+	if move_distance < 0:
+		move_distance = 0
+	if defense < 0:
+		defense = 0
+	if attack < 0:
+		attack = 0
+	if damage < 0:
+		damage = 0
 
 
 func _ready():
 	set_process(true)
+
+
+func attack(target):
+	""" Check tile, see if enemy is there and we are in range, if so attack (keep
+		stats if we want to undo the attack) ELSE do the move to tile stuff
+	"""
+	var attack_details = {
+		"damage": damage
+	}
+	if attack > 0 and main.checkIfNodeDeleted(target) == false and target.alive:
+		attack -= 1
+		target.take_damage(self, attack_details)
+
+
+func take_damage(attacker, attack_details):
+	var dmg = attack_details["damage"] 
+	var hold_defense = defense
+
+	if defense > 0:
+		defense -= dmg
+		dmg -= hold_defense
+		if defense < 0:
+			defense = 0
+
+	if dmg < 0:
+		dmg = 0
+	health - dmg
+	if health <= 0:
+		alive = false
 
 
 func set_tile_target(target_node):
@@ -40,8 +104,6 @@ func set_spawn_tile(target_node):
 	chosen_tile = target_node
 	turn_start_tile = target_node
 	target_pos = target_node.global_position
-
-	
 
 
 func set_navigation():
@@ -67,6 +129,7 @@ func set_navigation():
 				break
 		if len(path) > remaining_move:
 			break
+
 	print('debug_idx_path is ' + str(debug_idx_path) + ' made from start' + str(current_tile.index) + ' to '  + str(target_tile.index) + ' with point array ' + str(point_path))
 	if path.size() > 0:
 		current_tile = path[0]
@@ -75,14 +138,10 @@ func set_navigation():
 
 
 func handle_start_and_reset_vars():
-	remaining_move = move_distance
-	if current_def > default_def:
-		current_def = default_def
 	if current_tile.forest_path:
 		remaining_move += 2
 	if moving:
 		moving = false
-	
 
 
 func reset_turn():
@@ -97,6 +156,9 @@ func reset_turn():
 
 func start_turn():
 	# start turn
+	if energy <= 0:
+		set_default_stats()
+	remaining_move = move_distance
 	var l = get_node("/root/level")
 	var default_weight =  meta.unccupied_tile_weight if current_tile.can_move else meta.wall_tile_weight
 	l.level_astar.set_point_weight_scale(current_tile.index, default_weight)
@@ -109,8 +171,8 @@ func stop_turn():
 	var l = get_node("/root/level")
 	l.level_astar.set_point_weight_scale(current_tile.index, meta.occupied_tile_weight)
 	processing_turn = false
-	if current_tile.defense_buff > 0 and current_def <= default_def:
-		current_def += current_tile.defense_buff
+	if current_tile.defense_buff > 0 and defense <= default_defense:
+		default_defense += current_tile.defense_buff
 		print('got forest bonus')
 	current_tile.player_on_tile = true
 

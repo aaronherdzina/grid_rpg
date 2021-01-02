@@ -35,15 +35,28 @@ position = Vector2( -1.1214, 6.53815 )
 scale = Vector2( 16.4348, 1.43929 )
 texture = ExtResource( 4 )
 
-[node name="turn_text" type="Label" parent="text_overlay"]
-margin_left = -922.0
+[node name="tile_text" type="Label" parent="text_overlay"]
+margin_left = -957.0
 margin_top = -75.0
-margin_right = -458.0
-margin_bottom = -44.0
-rect_scale = Vector2( 4, 4 )
-text = "Turn Text"
+margin_right = -475.0
+margin_bottom = 5.0
+rect_scale = Vector2( 2, 2 )
 align = 1
 valign = 1
+autowrap = true
+__meta__ = {
+"_edit_use_anchors_": false
+}
+
+[node name="character_stats" type="Label" parent="text_overlay"]
+margin_left = 6.0
+margin_top = -75.0
+margin_right = 488.0
+margin_bottom = 5.0
+rect_scale = Vector2( 2, 2 )
+align = 1
+valign = 1
+autowrap = true
 __meta__ = {
 "_edit_use_anchors_": false
 }

@@ -28,6 +28,7 @@ var custom_weight = null
 var forest = false
 var special = false
 var forest_path = false
+var tags = []
 
 var defense_buff = 0
 var description = ""
@@ -52,6 +53,7 @@ func map_tile_type(tile_type):
 	if custom_weight:
 		weight = custom_weight
 
+	tags = []
 	# $Sprite.set_texture(main.MOUNTAIN_TILE)
 	if tile_type == "move" or tile_type == "" or not tile_type:
 		l.level_astar.set_point_weight_scale(index, weight)
@@ -60,6 +62,7 @@ func map_tile_type(tile_type):
 		l.level_astar.set_point_weight_scale(index, weight)
 		$Sprite.set_texture(main.ENEMY_SPAWN_TILE)
 		print('enemy spawn')
+		tags.append("Enemy Spawn")
 		spawn_enemies = true
 	elif tile_type == "player spawn":
 		l.level_astar.set_point_weight_scale(index, weight)
@@ -71,6 +74,8 @@ func map_tile_type(tile_type):
 		$Sprite.set_texture(main.basic_forest_tiles[rand_range(0, len(main.basic_forest_tiles))])
 		forest = true
 		defense_buff += 1
+		tags.append("Forest")
+		tags.append("+1 Defense")
 		description = "+1 Defense"
 	elif tile_type == "forest path":
 		l.level_astar.set_point_weight_scale(index, weight)
@@ -78,9 +83,13 @@ func map_tile_type(tile_type):
 		forest = true
 		special = true
 		forest_path = true
+		tags.append("Forest")
+		tags.append("Special")
+		tags.append("+2 Move")
 		description = "+2 Move starting turn here"
 	else:
 		if not custom_weight: weight = meta.wall_tile_weight
+		tags.append("Wall")
 		print('wall ' + str(weight))
 		l.level_astar.set_point_weight_scale(index, weight)
 		$Sprite.set_texture(main.WALL_TILE)
@@ -103,7 +112,6 @@ func _on_Button_pressed():
 	if not get_node("/root").has_node("level"):
 		return
 	var l = get_node("/root/level")
-
 	if main.debug:
 		for t in l.level_tiles:
 			t.modulate = Color(1, 1, 1, 1)
@@ -133,6 +141,10 @@ func hover():
 	var path = []
 	var debug_idx_path = []
 	var tile_hover_color = Color(.7, .7, 1, 1)
+	
+	var tile_text = "Tile " + str(index)
+
+
 	if not can_move:
 		tile_hover_color = Color(.5, .5, .5, 1)
 	
@@ -144,38 +156,55 @@ func hover():
 	player.current_tile.modulate = Color(1, 1, 1, 1)
 
 	self.modulate = tile_hover_color
-	for n in neighbors:
-		if n.can_move:
-			n.z_index = 1
-
+	#for n in neighbors:
+	#	if n.can_move:
+	#		n.z_index = 1
+	var index_count = 0
+	var scale_variant = .015
+	var scale_var = .95
+	var scale_var_default = .95
 	for p in point_path:
 		if l.level_astar.get_point_weight_scale(p) >= meta.max_weight:
+			l.get_node("text_overlay/tile_text").set_text(tile_text)
 			return
 		for t in l.level_tiles:
 			if p == t.index and t != player.current_tile:
 				t.get_node("Sprite").modulate = Color(.9, .9, 1, 1)
+				t.set_scale(Vector2(scale_var, scale_var))
 				path.append(t)
 				debug_idx_path.append(t.index)
+				index_count += 1
+				scale_var += scale_variant
 				if len(path) > player.remaining_move:
-					t.z_index = 1
+					t.z_index = index_count
 					# t.get_node("background").modulate = too_far_background_color
 					t.modulate = too_far_tile_color
 				elif len(path) == player.remaining_move: # full move
 					t.get_node("background").modulate = highlight_background_color
 					t.modulate = highlight_tile_color
-					t.z_index = 3
+					t.z_index = index_count
 				else:
-					t.z_index = 2
+					t.z_index = index_count
 					t.get_node("background").modulate = path_highlight_background_color
 					t.modulate = path_highlight_tile_color
 				break
-	z_index = 4
+			else:
+				t.set_scale(Vector2(scale_var_default, scale_var_default))
+	z_index = index_count + 1
+	tile_text += "\n"
+	for i in range(0, len(tags)):
+		tile_text += str(tags[i]) + " "
+		if i % 6 == 0:
+			tile_text += "\n"
+
+	l.get_node("text_overlay/tile_text").set_text(tile_text)
 
 
 func exit_hover():
 	if not get_node("/root").has_node("level"):
 		return
 	var l = get_node("/root/level")
+	l.get_node("text_overlay/tile_text").set_text("")
 	for t in l.level_tiles:
 		t.modulate = Color(1, 1, 1, 1)
 		t.get_node("background").modulate = default_background_color
