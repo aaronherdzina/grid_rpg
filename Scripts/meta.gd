@@ -60,17 +60,63 @@ func get_character_display_text(character):
 	return character_stats
 
 
-
-func get_adjacent_tiles_in_distance(tile=null, distance=1):
+func get_adjacent_tiles_in_distance(tile=null, distance=1, type="fill"):
 	var l = get_node("/root/level")
-	var all_adjacent_tiers = []
-	for i in range(0, distance):
-		var point_neighbors = []
-		point_neighbors = l.level_astar.get_point_connections(tile.index)
-		for point_n in point_neighbors:
-			for t in l.level_tiles:
-				if point_n == t.index:
-					all_adjacent_tiers.append(t)
+	var all_adjacent_tiles = []
+	var tile_count = len(l.level_tiles)
+	var tile_index = tile.index
+	
+	# Fill all adjacent
+	# cross up down left right
+	# star all directions but not inbetween tiles
+	
+	if type == "fill":
+		for t in l.level_tiles:
+			if t.col >= tile.col - distance and t.col <= tile.col + distance and\
+			   t.row >= tile.row - distance and t.row <= tile.row + distance:
+				all_adjacent_tiles.append(t)
+
+	else:
+		for i in range(1, distance+1):
+			var point_neighbors = []
+			#point_neighbors = l.level_astar.get_point_connections(tile.index)
+			var above_tile_idx = tile_index - (l.current_rows * i)
+			var above_right_tile_idx = tile_index - (l.current_rows * i) + i
+			var above_left_tile_idx = tile_index - (l.current_rows * i) - i
+	
+			var right_tile_idx = tile_index + i
+			var below_tile_idx = tile_index + (l.current_rows * i)
+			var below_right_tile_idx = tile_index + (l.current_rows * i) + i
+			var below_left_tile_idx = tile_index + (l.current_rows * i) - i
+		
+			var left_tile_idx = tile_index - i
+			print('above_tile_idx ' + str(above_tile_idx))
+			if tile.col > - 1 + i and above_tile_idx >= 0 and above_tile_idx < tile_count and main.checkIfNodeDeleted(l.level_tiles[above_tile_idx]) == false:
+				all_adjacent_tiles.append(l.level_tiles[above_tile_idx])
+			if type == "fill" or type == "star":
+				if tile.col > - 1 + i and tile.row < l.current_rows-i and above_right_tile_idx >= 0 and above_right_tile_idx < tile_count and main.checkIfNodeDeleted(l.level_tiles[above_right_tile_idx]) == false:
+					all_adjacent_tiles.append(l.level_tiles[above_right_tile_idx])
+		
+				if tile.col > - 1 + i and tile.row > -1 + i and above_left_tile_idx >= 0 and above_left_tile_idx < tile_count and main.checkIfNodeDeleted(l.level_tiles[above_left_tile_idx]) == false:
+					all_adjacent_tiles.append(l.level_tiles[above_left_tile_idx])
+	
+			if tile.row < l.current_rows-i and right_tile_idx >= 0 and right_tile_idx < tile_count and main.checkIfNodeDeleted(l.level_tiles[right_tile_idx]) == false:
+				all_adjacent_tiles.append(l.level_tiles[right_tile_idx])
+		
+			if tile.col < l.current_cols-i and below_tile_idx >= 0 and below_tile_idx < tile_count and main.checkIfNodeDeleted(l.level_tiles[below_tile_idx]) == false:
+				all_adjacent_tiles.append(l.level_tiles[below_tile_idx])
+			
+			if type == "fill" or type == "star":
+				if tile.col > - 1 + i and tile.row < l.current_rows-i and below_right_tile_idx >= 0 and below_right_tile_idx < tile_count and main.checkIfNodeDeleted(l.level_tiles[below_right_tile_idx]) == false:
+					all_adjacent_tiles.append(l.level_tiles[below_right_tile_idx])
+		
+				if tile.col > - 1 + i and tile.row > -1 + i and below_left_tile_idx >= 0 and below_left_tile_idx < tile_count and main.checkIfNodeDeleted(l.level_tiles[below_left_tile_idx]) == false:
+					all_adjacent_tiles.append(l.level_tiles[below_left_tile_idx])
+		
+			if tile.row > -1 + i and left_tile_idx >= 0 and left_tile_idx < tile_count and main.checkIfNodeDeleted(l.level_tiles[left_tile_idx]) == false:
+				all_adjacent_tiles.append(l.level_tiles[left_tile_idx])
+		
+	return all_adjacent_tiles
 
 
 func get_closest_adjacent_tile(starting_node, target_node, random=false, is_player=false):

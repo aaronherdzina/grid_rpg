@@ -117,6 +117,19 @@ func _on_Button_pressed():
 			t.modulate = Color(1, 1, 1, 1)
 			if not t.can_move:
 				t.modulate = Color(.4, .4, .4, 1)
+	move_or_attack()
+
+
+func move_or_attack():
+	if not get_node("/root").has_node("player"):
+		return
+	var p = get_node("/root/player")
+
+	if meta.player_turn:
+		for enm in get_tree().get_nodes_in_group("enemies"):
+			if main.checkIfNodeDeleted(enm) == false and enm.alive and self.index == enm.current_tile.index:
+				p.attack(enm)
+				return
 	if can_move:
 		move_to_tile_on_press()
 
@@ -197,6 +210,9 @@ func hover():
 		if i % 6 == 0:
 			tile_text += "\n"
 
+	for t in meta.get_adjacent_tiles_in_distance(self, 1):
+		t.modulate = Color(1, 0, 1, 1)
+		
 	l.get_node("text_overlay/tile_text").set_text(tile_text)
 
 

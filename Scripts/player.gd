@@ -17,12 +17,14 @@ var starting_turn_health = 10
 var processing_turn = false
 
 var attack = 2
+var atk_range = 1
 var damage = 3
 var defense = 0
 var can_attack = true
 var energy = 3
 
 var default_energy = 3
+var default_atk_range = 1
 var default_attack = 2
 var default_damage = 3
 var default_defense = 0
@@ -34,6 +36,7 @@ var battle_damage_debuff = 0
 var battle_defense_debuff = 0
 var battle_move_debuff = 0
 var alive = true
+
 
 func set_default_stats():
 	attack = default_attack
@@ -51,6 +54,8 @@ func set_default_stats():
 		attack = 0
 	if damage < 0:
 		damage = 0
+	if atk_range < 0:
+		atk_range = 0
 
 
 func _ready():
@@ -61,12 +66,25 @@ func attack(target):
 	""" Check tile, see if enemy is there and we are in range, if so attack (keep
 		stats if we want to undo the attack) ELSE do the move to tile stuff
 	"""
+	var is_in_attack_range = false
+	var adjacent_tiles_in_range = meta.get_adjacent_tiles_in_distance(current_tile, atk_range, "fill")
+	for tile in adjacent_tiles_in_range:
+		if target.current_tile == tile:
+			is_in_attack_range = true
+			break
+
+	if not is_in_attack_range:
+		chosen_tile = target.current_tile
+		move()
+		return
+
 	var attack_details = {
 		"damage": damage
 	}
 	if attack > 0 and main.checkIfNodeDeleted(target) == false and target.alive:
 		attack -= 1
 		target.take_damage(self, attack_details)
+		print('attacked!')
 
 
 func take_damage(attacker, attack_details):
@@ -207,7 +225,7 @@ func _process(delta):
 					if not path[0].can_move:
 						stop_path = true
 					for enm in get_tree().get_nodes_in_group("enemies"):
-						if main.checkIfNodeDeleted(enm) == false and enm.current_tile and enm.current_tile.index == path[0].index:
+						if main.checkIfNodeDeleted(enm) == false and enm.alive and enm.current_tile and enm.current_tile.index == path[0].index:
 							stop_path = true
 							break
 						# if our next move would be the same as the player's stop and end move

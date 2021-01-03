@@ -114,6 +114,14 @@ func start_turn():
 
 	# after turn
 
+func remove_enemy():
+	var l = get_node("/root/level")
+	alive = false
+	l.level_astar.set_point_weight_scale(current_tile.index, meta.unccupied_tile_weight)
+	current_tile.enm_on_tile = false
+	$Sprite.visible = false
+	current_tile = null
+
 
 func stop_turn():
 	# astar set point of current tile to
@@ -159,34 +167,36 @@ func take_damage(attacker, attack_details):
 
 	if dmg < 0:
 		dmg = 0
-	health - dmg
+	health -= dmg
+	print(attacker.char_name + ' attacked ' + char_name + ' for ' + str(attack_details["damage"]))
 	if health <= 0:
-		alive = false
+		remove_enemy()
 
 
 func _process(delta):
 	# note the path is a list of actual tiles 
-	if path.size() > 0:
-		var d = self.global_position.distance_to(path[0].global_position)
-		if d > 10:
-			position = self.global_position.linear_interpolate(path[0].global_position, (speed * delta)/d)
-		else:
-			var player = get_node("/root/player")
-			current_tile = path[0]
-			position = current_tile.global_position
-			path.remove(0)
-			var stop_path = false
-			if len(path) > 0:
-				for enm in get_tree().get_nodes_in_group("enemies"):
-					if enm != self and enm.current_tile and enm.current_tile.index == path[0].index:
-						stop_path = true
-						break
-				if player.current_tile and path[0].index == player.current_tile.index:
-					stop_path = true
-					# if our next move would be the same as the player's stop and end move
+	if alive:
+		if path.size() > 0:
+			var d = self.global_position.distance_to(path[0].global_position)
+			if d > 10:
+				position = self.global_position.linear_interpolate(path[0].global_position, (speed * delta)/d)
 			else:
-				stop_path = true
-			if stop_path:
-				path = []
-	else:
-		stop_turn() # does not handle attacking or anything yet
+				var player = get_node("/root/player")
+				current_tile = path[0]
+				position = current_tile.global_position
+				path.remove(0)
+				var stop_path = false
+				if len(path) > 0:
+					for enm in get_tree().get_nodes_in_group("enemies"):
+						if enm != self and enm.current_tile and enm.current_tile.index == path[0].index:
+							stop_path = true
+							break
+					if player.current_tile and path[0].index == player.current_tile.index:
+						stop_path = true
+						# if our next move would be the same as the player's stop and end move
+				else:
+					stop_path = true
+				if stop_path:
+					path = []
+		else:
+			stop_turn() # does not handle attacking or anything yet

@@ -46,6 +46,8 @@ var level_astar = null
 var current_enm_count = 0
 var processing_turns = false
 var spawn_types_display_speed = .01
+var current_cols = 0
+var current_rows = 0
 # Called when the node enters the scene tree for the first time.
 
 
@@ -78,6 +80,8 @@ func spawn_premade_tiles(lvl_obj):
 	var col = lvl_obj["cols"]
 	var row = lvl_obj["rows"]
 	var tiles = lvl_obj["tile_list"]
+	current_rows = row
+	current_cols = col
 	#if not starting_tile:
 	#	starting_tile = get_node("starting_tile")
 
@@ -171,6 +175,8 @@ func spawn_tiles():
 	level_astar = AStar2D.new()
 	#var res = astar.get_id_path(1, 3) # Returns [1, 2, 3]
 	
+	current_rows = row
+	current_cols = col
 	for c in range(0, col):
 		for r in range(0, row):
 			tile_index += 1
@@ -362,6 +368,7 @@ func connect_astart_path_neightbors(astar_path_obj, tile_index, tile, row, col, 
 	# make sure point exists, node exists and make sure the
 	# index is not out of range or the tile array
 	print('right_tile_idx ' + str(tile_index) + ' v right_tile_idx ' + str(right_tile_idx))
+	
 	if tile.col > 0 and astar_path_obj.has_point(above_tile_idx) and above_tile_idx >= 0 and above_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
 		astar_path_obj.connect_points(tile_index, above_tile_idx, true)
 
@@ -419,7 +426,8 @@ func end_turn():
 		p.stop_turn()
 		round_turns = []
 		for enm in get_tree().get_nodes_in_group("enemies"):
-			round_turns.append(enm)
+			if main.checkIfNodeDeleted(enm) == false and enm.alive:
+				round_turns.append(enm)
 		process_enemy_turns()
 	else:
 		meta.player_turn = true

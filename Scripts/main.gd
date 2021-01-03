@@ -164,7 +164,7 @@ func handle_in_battle_input(action):
 			lvl.remove_tiles()
 			lvl.queue_free()
 		var timer1 = Timer.new()
-		timer1.set_wait_time(.5)
+		timer1.set_wait_time(1.5)
 		timer1.set_one_shot(true)
 		get_node("/root").add_child(timer1)
 		timer1.start()
