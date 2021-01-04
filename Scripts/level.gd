@@ -151,7 +151,7 @@ func spawn_premade_tiles(lvl_obj):
 	for t in level_tiles:
 		if t.spawn_enemies:
 			print("spawn enemy")
-			spawn_enemies(level_astar,  t, level_tiles[0])
+			spawn_enemies(level_astar,  t, t)
 			var timer = Timer.new()
 			timer.set_wait_time(spawn_types_display_speed)
 			timer.set_one_shot(true)
@@ -246,7 +246,7 @@ func set_random_level(lvl_obj):
 		tile_types.append("wall")
 		if wall_limit <= 0:
 			break
-	for i in range(0, enemy_spawns):
+	for i in range(0, enemy_spawns + 1):
 		enemy_spawns -= 1
 		tile_types.append("enemy spawn")
 		if enemy_spawns <= 0:
@@ -432,6 +432,7 @@ func end_turn():
 	else:
 		meta.player_turn = true
 		p.start_turn()
+		change_turn_display_name(p)
 		print('player turn')
 
 

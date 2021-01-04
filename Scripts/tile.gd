@@ -21,6 +21,8 @@ var highlight_tile_color = Color(1, 1, .8, 1)
 var path_highlight_tile_color = Color(.8, .8, 1, 1)
 var too_far_tile_color = Color(1, .8, .8, 1)
 
+var enm_highlight_tile_color = Color(1, .3, .3, 1)
+
 var player_on_tile = false
 var enm_on_tile = false
 var custom_weight = null
@@ -176,10 +178,10 @@ func hover():
 	var scale_variant = .015
 	var scale_var = .95
 	var scale_var_default = .95
+
+	for t in meta.get_adjacent_tiles_in_distance(self, player.atk_range):
+		t.modulate = Color(1, .3, .5, 1)
 	for p in point_path:
-		if l.level_astar.get_point_weight_scale(p) >= meta.max_weight:
-			l.get_node("text_overlay/tile_text").set_text(tile_text)
-			return
 		for t in l.level_tiles:
 			if p == t.index and t != player.current_tile:
 				t.get_node("Sprite").modulate = Color(.9, .9, 1, 1)
@@ -209,23 +211,34 @@ func hover():
 		tile_text += str(tags[i]) + " "
 		if i % 6 == 0:
 			tile_text += "\n"
-
-	for t in meta.get_adjacent_tiles_in_distance(self, 1):
-		t.modulate = Color(1, 0, 1, 1)
-		
+	
+	for enm in get_tree().get_nodes_in_group("enemies"):
+		if main.checkIfNodeDeleted(enm) == false and enm.alive and enm.current_tile.index == index:
+			enm.z_index = z_index + 5
+			l.change_turn_display_name(enm)
+			modulate = enm_highlight_tile_color
+			get_node("background").modulate = enm_highlight_tile_color
 	l.get_node("text_overlay/tile_text").set_text(tile_text)
 
 
 func exit_hover():
+	if not get_node("/root").has_node("player"):
+		return
 	if not get_node("/root").has_node("level"):
 		return
 	var l = get_node("/root/level")
+	var player = get_node("/root/player")
 	l.get_node("text_overlay/tile_text").set_text("")
 	for t in l.level_tiles:
 		t.modulate = Color(1, 1, 1, 1)
 		t.get_node("background").modulate = default_background_color
 		t.get_node("Sprite").modulate = Color(1, 1, 1, 1)
 		t.z_index = 0
+	
+	for enm in get_tree().get_nodes_in_group("enemies"):
+		if main.checkIfNodeDeleted(enm) == false and enm.alive and enm.current_tile.index == index:
+			enm.z_index = 5
+	l.change_turn_display_name(player)
 	z_index = 0
 
 

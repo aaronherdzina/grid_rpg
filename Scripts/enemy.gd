@@ -34,6 +34,12 @@ var battle_move_debuff = 0
 
 var alive = true
 
+var current_attack = 2
+var current_dmg = 3
+var current_defense = 0
+var current_atk_range = 1
+var current_move_distance = 3
+
 func set_default_stats():
 	attack = default_attack - battle_attack_debuff
 	damage = default_damage - battle_damage_debuff

@@ -17,14 +17,14 @@ var starting_turn_health = 10
 var processing_turn = false
 
 var attack = 2
-var atk_range = 1
+var atk_range = 2
 var damage = 3
 var defense = 0
 var can_attack = true
 var energy = 3
 
 var default_energy = 3
-var default_atk_range = 1
+var default_atk_range = 2
 var default_attack = 2
 var default_damage = 3
 var default_defense = 0
@@ -37,13 +37,41 @@ var battle_defense_debuff = 0
 var battle_move_debuff = 0
 var alive = true
 
+var current_attack = 2
+var current_dmg = 3
+var current_defense = 0
+var current_atk_range = 2
+var current_move_distance = 3
 
-func set_default_stats():
+
+# when energy runs out buff are removed and we set to our default stats
+func reset_energy_based_stats():
 	attack = default_attack
 	damage = default_damage
 	defense = default_defense
 	move_distance = default_distance
 	energy = default_energy
+	if energy < 1:
+		energy = 1
+	if move_distance < 0:
+		move_distance = 0
+	if defense < 0:
+		defense = 0
+	if attack < 0:
+		attack = 0
+	if damage < 0:
+		damage = 0
+	if atk_range < 0:
+		atk_range = 0
+
+
+# here we keep between turn buffs and if need to reset completely we use reset_energy_based_stats()
+func set_new_turn_stats():
+	attack = current_attack
+	damage = current_dmg
+	defense = current_defense
+	atk_range = current_atk_range
+	move_distance = current_move_distance
 	if energy < 1:
 		energy = 1
 	if move_distance < 0:
@@ -174,8 +202,9 @@ func reset_turn():
 
 func start_turn():
 	# start turn
+	set_new_turn_stats()
 	if energy <= 0:
-		set_default_stats()
+		reset_energy_based_stats()
 	remaining_move = move_distance
 	var l = get_node("/root/level")
 	var default_weight =  meta.unccupied_tile_weight if current_tile.can_move else meta.wall_tile_weight
@@ -190,7 +219,7 @@ func stop_turn():
 	l.level_astar.set_point_weight_scale(current_tile.index, meta.occupied_tile_weight)
 	processing_turn = false
 	if current_tile.defense_buff > 0 and defense <= default_defense:
-		default_defense += current_tile.defense_buff
+		current_defense += current_tile.defense_buff
 		print('got forest bonus')
 	current_tile.player_on_tile = true
 
