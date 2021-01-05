@@ -60,6 +60,8 @@ var useController = true
 var controllerCursorObj = false
 #### END OF CONTROLLER
 
+var zoom_increment = .2
+
 #### MAIN READY/PROCESS
 #func _ready():
 #	pass
@@ -130,24 +132,42 @@ func _input(event):
    # Mouse in viewport coordinates
 	if Input.is_action_pressed("ui_quit"): 
 		handle_main_menu_input("ui_quit")
-	if Input.is_action_pressed("start"): 
+	elif Input.is_action_pressed("start"): 
 		if current_screen == 'main_menu':
 			handle_main_menu_input("start")
 		elif current_screen == "battle":
 			handle_in_battle_input("start")
 			#get_node("/root/main_menu").visible = false
-	if Input.is_action_pressed("back"):
+	elif Input.is_action_pressed("back"):
 		if current_screen == "battle":
 			handle_in_battle_input("back")
 	elif Input.is_action_pressed("spacebar"):
 		if current_screen == "battle":
 			handle_in_battle_input("spacebar")
+	elif Input.is_action_pressed("scroll_forward"):
+		if current_screen == "battle":
+			handle_in_battle_input("scroll_forward")
+	elif Input.is_action_pressed("scroll_back"):
+		if current_screen == "battle":
+			handle_in_battle_input("scroll_back")
 
 
 func handle_in_battle_input(action):
 	if action == "start":
 		var level = get_node("/root/level")
 		level.end_turn()
+	elif action == "scroll_forward":
+		if get_node("/root").has_node("player"):
+			var player = get_node("/root/player")
+			if player.get_node("cam").zoom.x > .5:
+				player.get_node("cam").zoom.x -= zoom_increment
+				player.get_node("cam").zoom.y -= zoom_increment
+	elif action == "scroll_back":
+		if get_node("/root").has_node("player"):
+			var player = get_node("/root/player")
+			if player.get_node("cam").zoom.x < 1.5:
+				player.get_node("cam").zoom.x += zoom_increment
+				player.get_node("cam").zoom.y += zoom_increment
 	elif action == "back": 
 		if meta.player_turn:
 			if not get_node("/root").has_node("player"):

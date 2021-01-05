@@ -21,7 +21,7 @@ texture = ExtResource( 3 )
 
 [node name="Sprite" type="Sprite" parent="background_imgs"]
 position = Vector2( 975.807, 552.958 )
-scale = Vector2( 17.2572, 12.0389 )
+scale = Vector2( 66, 66 )
 texture = ExtResource( 4 )
 
 [node name="tile_container" type="Node2D" parent="."]
