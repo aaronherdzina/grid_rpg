@@ -25,16 +25,38 @@ var enm_highlight_tile_color = Color(1, .3, .3, 1)
 
 var player_on_tile = false
 var enm_on_tile = false
-var custom_weight = null
+var custom_weight = false
 
+### *******
+var special = false # used to check for things links tile highlighting.
+var water = false
 var forest = false
-var special = false
 var forest_path = false
 var tags = []
+###
 
-var defense_buff = 0
+### BUFFS/DEBUFFS
+var difficult_terrain = false # flag, use for labeling, conditionals, etc.
+#
+var passthrough_defense = 0
+var passthrough_attack = 0
+var passthrough_atk_range = 0
+var passthrough_damage = 0
+var passthrough_vol = 0
+var passthrough_hp = 0
+var passthrough_move = 1
+#
+var end_and_start_turn_defense = 0
+var end_and_start_turn_attack = 0
+var end_and_start_turn_atk_range = 0
+var end_and_start_turn_damage = 0
+var end_and_start_turn_vol = 0
+var end_and_start_turn_hp = 0
+var end_and_start_turn_move = 0
+###
+
 var description = ""
-##
+###
 
 # Called when the node enters the scene tree for the first time.
 func _ready():
@@ -50,12 +72,13 @@ func map_tile_type(tile_type):
 	if not get_node("/root").has_node("level"):
 		return
 	var l = get_node("/root/level")
-	var weight =  meta.unccupied_tile_weight
+	var weight =  float(meta.unccupied_tile_weight)
 	can_move = true
 	if custom_weight:
 		weight = custom_weight
 
 	tags = []
+	visible = true
 	# $Sprite.set_texture(main.MOUNTAIN_TILE)
 	if tile_type == "move" or tile_type == "" or not tile_type:
 		l.level_astar.set_point_weight_scale(index, weight)
@@ -63,38 +86,46 @@ func map_tile_type(tile_type):
 	elif tile_type == "enemy spawn":
 		l.level_astar.set_point_weight_scale(index, weight)
 		$Sprite.set_texture(main.ENEMY_SPAWN_TILE)
-		print('enemy spawn')
+		#print('enemy spaw tile placen')
 		tags.append("Enemy Spawn")
 		spawn_enemies = true
 	elif tile_type == "player spawn":
 		l.level_astar.set_point_weight_scale(index, weight)
+		tags.append("Player Spawn")
 		$Sprite.set_texture(main.PLAYER_SPAWN_TILE)
-		print('player spawn')
+		print('player spawn tile place')
 		spawn_player = true
-	elif tile_type == "forest":
+		can_move = true
+	elif tile_type == "water":
+		if not custom_weight: weight = meta.difficult_terrain_weight
 		l.level_astar.set_point_weight_scale(index, weight)
-		$Sprite.set_texture(main.basic_forest_tiles[rand_range(0, len(main.basic_forest_tiles))])
-		forest = true
-		defense_buff += 1
-		tags.append("Forest")
-		tags.append("+1 Defense")
-		description = "+1 Defense"
+		$Sprite.set_texture(main.basic_water_tiles[rand_range(0, len(main.basic_water_tiles))])
+		water = true
+		special = true
+		difficult_terrain = true
+		end_and_start_turn_defense += 1
+		end_and_start_turn_move -= 1
+		tags.append("Water")
+		tags.append("-1 Move")
+		tags.append("Double Electricity Dmg")
+		description += "Double Electricity attacks targeting this tile, -1 Move starting turn here."
 	elif tile_type == "forest path":
 		l.level_astar.set_point_weight_scale(index, weight)
 		$Sprite.set_texture(main.FOREST_PATH_TILE_1)
 		forest = true
 		special = true
 		forest_path = true
+		end_and_start_turn_move += 2
 		tags.append("Forest")
 		tags.append("Special")
 		tags.append("+2 Move")
-		description = "+2 Move starting turn here"
+		description = "+2 Move starting turn here."
 	else:
 		if not custom_weight: weight = meta.wall_tile_weight
 		tags.append("Wall")
-		print('wall ' + str(weight))
 		l.level_astar.set_point_weight_scale(index, weight)
 		$Sprite.set_texture(main.WALL_TILE)
+		visible = false
 		can_move = false
 
 
@@ -137,7 +168,7 @@ func move_or_attack():
 
 
 func move_to_tile_on_press():
-	if not get_node("/root").has_node("player"):
+	if not meta.player_turn or not get_node("/root").has_node("player"):
 		return
 	var p = get_node("/root/player")
 	if meta.player_turn:
@@ -152,6 +183,11 @@ func hover():
 		return
 	var l = get_node("/root/level")
 	var player = get_node("/root/player")
+	if meta.player_turn:
+		meta.hovering_on_something = true
+	else:
+		return
+	l.attach_text_overlay(self)
 	var point_path = l.level_astar.get_id_path(player.current_tile.index, index)
 	var path = []
 	var debug_idx_path = []
@@ -167,7 +203,7 @@ func hover():
 		tile_hover_color = Color(1, .5, .5, 1)
 
 	player.current_tile.get_node("background").modulate = current_tile_background_color
-	player.current_tile.z_index = 1
+	#player.current_tile.z_index = 1
 	player.current_tile.modulate = Color(1, 1, 1, 1)
 
 	self.modulate = tile_hover_color
@@ -178,9 +214,10 @@ func hover():
 	var scale_variant = .015
 	var scale_var = .95
 	var scale_var_default = .95
-
-	for t in meta.get_adjacent_tiles_in_distance(self, player.atk_range):
-		t.modulate = Color(1, .3, .5, 1)
+	
+	# visualize attack range from the tile hovered over
+	#for t in meta.get_adjacent_tiles_in_distance(self, player.current_atk_range):
+	#	t.modulate = Color(1, .3, .5, 1)
 	for p in point_path:
 		for t in l.level_tiles:
 			if p == t.index and t != player.current_tile:
@@ -190,25 +227,27 @@ func hover():
 				debug_idx_path.append(t.index)
 				index_count += 1
 				scale_var += scale_variant
-				if len(path) > player.remaining_move:
-					t.z_index = index_count
+				if len(path) > player.current_move_distance:
+					#t.z_index = index_count
 					# t.get_node("background").modulate = too_far_background_color
 					t.modulate = too_far_tile_color
-				elif len(path) == player.remaining_move: # full move
+				elif len(path) == player.current_move_distance: # full move
+					t.get_node("AnimationPlayer").play("wobble repeat")
 					t.get_node("background").modulate = highlight_background_color
 					t.modulate = highlight_tile_color
-					t.z_index = index_count
+					#t.z_index = index_count
 				else:
-					t.z_index = index_count
+					t.get_node("AnimationPlayer").play("wobble")
+					#t.z_index = index_count
 					t.get_node("background").modulate = path_highlight_background_color
 					t.modulate = path_highlight_tile_color
 				break
 			else:
 				t.set_scale(Vector2(scale_var_default, scale_var_default))
-	z_index = index_count + 1
+	#z_index = index_count + 1
 	tile_text += "\n"
 	for i in range(0, len(tags)):
-		tile_text += str(tags[i]) + " "
+		tile_text += str(tags[i]) + (", " if len(tags) > 1 else " ")
 		if i % 6 == 0:
 			tile_text += "\n"
 	
@@ -218,28 +257,18 @@ func hover():
 			l.change_turn_display_name(enm)
 			modulate = enm_highlight_tile_color
 			get_node("background").modulate = enm_highlight_tile_color
+			for t in enm.tiles_in_view:
+				t.modulate = enm_highlight_tile_color
 	l.get_node("text_overlay/tile_text").set_text(tile_text)
 
 
 func exit_hover():
+	meta.hovering_on_something = false
 	if not get_node("/root").has_node("player"):
 		return
 	if not get_node("/root").has_node("level"):
 		return
-	var l = get_node("/root/level")
-	var player = get_node("/root/player")
-	l.get_node("text_overlay/tile_text").set_text("")
-	for t in l.level_tiles:
-		t.modulate = Color(1, 1, 1, 1)
-		t.get_node("background").modulate = default_background_color
-		t.get_node("Sprite").modulate = Color(1, 1, 1, 1)
-		t.z_index = 0
-	
-	for enm in get_tree().get_nodes_in_group("enemies"):
-		if main.checkIfNodeDeleted(enm) == false and enm.alive and enm.current_tile.index == index:
-			enm.z_index = 5
-	l.change_turn_display_name(player)
-	z_index = 0
+	meta.reset_graphics_and_overlays()
 
 
 func _on_Button_mouse_entered():

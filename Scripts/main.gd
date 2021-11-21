@@ -4,21 +4,22 @@ const debug = false # for dev
 
 
 # TILES
-const BASIC_TILE = preload("res://Sprites/tiles/basic/new border grey tile.png")
-const WALL_TILE = preload("res://Sprites/tiles/basic/dark tile.png")
+const BASIC_TILE = preload("res://Sprites/tiles/new style/standard/standard grass tile.png")
+const WALL_TILE = preload("res://Sprites/tiles/new style/unique/standard water tile.png")
 
-const ENEMY_SPAWN_TILE = preload("res://Sprites/tiles/basic/new border grey tile.png")
-const PLAYER_SPAWN_TILE = preload("res://Sprites/tiles/basic/new border grey tile.png")
+const ENEMY_SPAWN_TILE = preload("res://Sprites/tiles/new style/unique/enm spawn tile.png")
+const PLAYER_SPAWN_TILE = preload("res://Sprites/tiles/new style/standard/bright tile.png")
 
-const FOREST_PATH_TILE_1 = preload("res://Sprites/tiles/environment/forest path til.png")
-const FOREST_TILE_1 = preload("res://Sprites/tiles/environment/forest tile 1.png")
-const FOREST_TILE_2 = preload("res://Sprites/tiles/environment/forest tile 2.png")
+const FOREST_PATH_TILE_1 = preload("res://Sprites/tiles/new style/unique/rock tile.png")
+const WATER_TILE_1 = preload("res://Sprites/tiles/new style/unique/standard water tile.png")
+const WATER_TILE_2 = preload("res://Sprites/tiles/new style/unique/standard water tile.png")
 
+const DMG_EFFECT_SCENE = preload("res://Scenes/dmgEffect.tscn")
 
-var basic_forest_tiles = [FOREST_TILE_1, FOREST_TILE_2]
+var basic_water_tiles = [WATER_TILE_1, WATER_TILE_2]
 var special_forest_tiles = [FOREST_PATH_TILE_1]
 
-const MOUNTAIN_TILE = preload("res://Sprites/tiles/basic/new border grey tile.png")
+const MOUNTAIN_TILE = preload("res://Sprites/tiles/new style/standard/mid tile.png")
 #######
 
 
@@ -26,7 +27,6 @@ const LEVEL = preload("res://Scenes/level.tscn")
 const TILE = preload("res://Scenes/tile.tscn")
 const ENEMY = preload("res://Scenes/enemy.tscn")
 const PLAYER = preload("res://Scenes/player.tscn")
-
 #### SAVE LOAD VARS
 var game_name = 'game_name'
 var playerFilepath = "user://" + str(game_name) + "_playerData_.data"
@@ -40,6 +40,7 @@ var gameData = {
 var playerData = {
 	}
 #### END OF SAVE LOAD VARS
+
 
 #### MENU VARS
 const popupMenu = preload("res://Scenes/popupMenu.tscn")
@@ -61,7 +62,7 @@ var controllerCursorObj = false
 #### END OF CONTROLLER
 
 var zoom_increment = .2
-
+var cam_move_vel = 50
 #### MAIN READY/PROCESS
 #func _ready():
 #	pass
@@ -150,6 +151,18 @@ func _input(event):
 	elif Input.is_action_pressed("scroll_back"):
 		if current_screen == "battle":
 			handle_in_battle_input("scroll_back")
+	elif Input.is_action_pressed("up"):
+		if current_screen == "battle":
+			handle_in_battle_input("up")
+	elif Input.is_action_pressed("down"):
+		if current_screen == "battle":
+			handle_in_battle_input("down")
+	elif Input.is_action_pressed("left"):
+		if current_screen == "battle":
+			handle_in_battle_input("left")
+	elif Input.is_action_pressed("right"):
+		if current_screen == "battle":
+			handle_in_battle_input("right")
 
 
 func handle_in_battle_input(action):
@@ -162,12 +175,16 @@ func handle_in_battle_input(action):
 			if player.get_node("cam").zoom.x > .5:
 				player.get_node("cam").zoom.x -= zoom_increment
 				player.get_node("cam").zoom.y -= zoom_increment
+				var overlay = player.get_node("cam/overlays and underlays")
+				overlay.set_scale(player.get_node("cam").zoom)
 	elif action == "scroll_back":
 		if get_node("/root").has_node("player"):
 			var player = get_node("/root/player")
 			if player.get_node("cam").zoom.x < 1.5:
 				player.get_node("cam").zoom.x += zoom_increment
 				player.get_node("cam").zoom.y += zoom_increment
+				var overlay = player.get_node("cam/overlays and underlays")
+				overlay.set_scale(player.get_node("cam").zoom)
 	elif action == "back": 
 		if meta.player_turn:
 			if not get_node("/root").has_node("player"):
@@ -175,6 +192,25 @@ func handle_in_battle_input(action):
 			var player = get_node("/root/player")
 			player.reset_turn()
 	elif action == "spacebar":
+		if meta.can_spawn_level:
+			meta.can_spawn_level = false
+			meta.remove_enemies()
+			if get_node("/root").has_node("player"):
+				var p = get_node("/root/player")
+				p.queue_free()
+			var timer1 = Timer.new()
+			timer1.set_wait_time(.5)
+			timer1.set_one_shot(true)
+			get_node("/root").add_child(timer1)
+			timer1.start()
+			yield(timer1, "timeout")
+			timer1.queue_free()
+			var l = get_node("/root/level")
+			l.randomize_level(l.random_lvl)
+			#l.spawn_premade_tiles(l.random_lvl)
+			current_screen = 'battle'
+		##### old below
+		"""
 		for enm in get_tree().get_nodes_in_group("enemies"):
 			enm.queue_free()
 		if get_node("/root").has_node("player"):
@@ -195,14 +231,48 @@ func handle_in_battle_input(action):
 		l.set_random_level(l.random_lvl)
 		l.spawn_premade_tiles(l.random_lvl)
 		current_screen = 'battle'
+		"""
+	if action == "up":
+		if get_node("/root").has_node("player"):
+			var p = get_node("/root/player")
+			p.get_node("cam").position.y -= cam_move_vel
+	elif action == "down":
+		if get_node("/root").has_node("player"):
+			var p = get_node("/root/player")
+			p.get_node("cam").position.y += cam_move_vel
+	if action == "left":
+		if get_node("/root").has_node("player"):
+			var p = get_node("/root/player")
+			p.get_node("cam").position.x -= cam_move_vel
+	elif action == "right":
+		if get_node("/root").has_node("player"):
+			var p = get_node("/root/player")
+			p.get_node("cam").position.x += cam_move_vel
+
+
+func make_timer(time=0):
+	var timer = Timer.new()
+	timer.set_wait_time(time)
+	timer.set_one_shot(true)
+	get_node("/root").add_child(timer)
+	return timer
+
 
 
 func handle_main_menu_input(action):
 	if action == "start":
+		# OLD
+		#var l = LEVEL.instance()
+		#get_node("/root").add_child(l)
+		#l.set_random_level(l.random_lvl)
+		#l.spawn_premade_tiles_old(l.random_lvl)
+		#current_screen = 'battle'
+		
+		# NEW
 		var l = LEVEL.instance()
 		get_node("/root").add_child(l)
-		l.set_random_level(l.random_lvl)
-		l.spawn_premade_tiles(l.random_lvl)
+		l.set_full_level(l.random_lvl)
+		l.spawn_premade_tiles(l.random_lvl, false, meta.course_1)
 		current_screen = 'battle'
 	elif action == "ui_quit":
 		if not waitToProcessMenuClick:
@@ -238,39 +308,38 @@ func canClick(nodesAsStrIfDefinedClickIsFalse=[], parentToCheck=get_node("/root"
 			return false
 	return true
 
+
 func saveAndQuit(shouldSave=true):
 	if shouldSave:
 		pass
 	get_tree().quit()
 
 
-func cameraShake(mag, length):
+func cameraShake(cam, mag, timeToShake):
 	randomize()
-	if not get_node("/root").has_node("cam"):
+	if not get_node("/root").has_node("player"):
 		return
-	var cam = get_node("/root/cam")
-	var magnitude = mag if mag <= 10 else 10
-	var timeToShake = length if length <= 4 else 4
+	meta.can_spawn_level = false
 	if shaking:
 		return
 	while timeToShake > 0:
 		shaking = true
 		var pos = Vector2()
-		pos.x = rand_range(-magnitude, magnitude)
-		pos.y = rand_range(-magnitude, magnitude)
+		pos.x = rand_range(-mag, mag)
+		pos.y = rand_range(-mag, mag)
 		cam.position = pos
 		timeToShake -= get_process_delta_time()
 
 		var timer = Timer.new()
+		get_node("/root").add_child(timer)
 		timer.set_wait_time(.015)
 		timer.set_one_shot(true)
-		addToParent(timer, null, true)
 		timer.start()
 		yield(timer, "timeout")
 		timer.queue_free()
 
-	magnitude = 0
 	shaking = false
+	meta.can_spawn_level = true
 
 
 func instancer(objToInstance=null, parent=null, addDeferred=false, addToThisGroup=null, returnObj=true):

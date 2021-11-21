@@ -1,6 +1,6 @@
 extends Node2D
 
-var speed = rand_range(300, 450)
+var speed = rand_range(300, 500)
 var char_name = "Player"
 var path = []
 var target_pos = Vector2()
@@ -10,21 +10,30 @@ var chosen_tile = null
 var turn_start_tile = null
 var previous_tile = null
 var moving = false
-var move_distance = 3
-var remaining_move = 3
+var current_battle_move_distance = 5
+var current_move_distance = 5
 var health = 10
 var starting_turn_health = 10
 var processing_turn = false
+var stealth = true
+var invisible = false
+var player_cam_clamp_distance = 200
 
-var attack = 2
-var atk_range = 2
-var damage = 3
-var defense = 0
+var noise = 2
+var cam_free_move = false
+var current_battle_attack = 2
+var current_battle_atk_range = 1
+var current_battle_damage = 1
+var stealth_noise_val = 1
+var stealth_dmg_bonus = 1
+var stealth_dmg_mod = 1.2
+var current_battle_defense = 0
 var can_attack = true
 var energy = 3
+var cam_node_pos = self.position
 
 var default_energy = 3
-var default_atk_range = 2
+var default_atk_range = 1
 var default_attack = 2
 var default_damage = 3
 var default_defense = 0
@@ -38,55 +47,41 @@ var battle_move_debuff = 0
 var alive = true
 
 var current_attack = 2
-var current_dmg = 3
+var current_damage = 3
 var current_defense = 0
-var current_atk_range = 2
-var current_move_distance = 3
+var current_atk_range = 1
+
+var char_power = 10 # throw strength & distance, item cary max, wrestle, melee dmg bonus
+var char_agil = 8 # move speed, 
+var char_tech = 6 # char energy max, ranged dmg donus, 
+var char_weaponry = 7 # atks, atk range sometimes, dmg
 
 
 # when energy runs out buff are removed and we set to our default stats
 func reset_energy_based_stats():
-	attack = default_attack
-	damage = default_damage
-	defense = default_defense
-	move_distance = default_distance
+	current_attack = default_attack
+	current_damage = default_damage
+	current_defense = default_defense
+	current_atk_range = default_atk_range
+	current_move_distance = default_distance
 	energy = default_energy
 	if energy < 1:
 		energy = 1
-	if move_distance < 0:
-		move_distance = 0
-	if defense < 0:
-		defense = 0
-	if attack < 0:
-		attack = 0
-	if damage < 0:
-		damage = 0
-	if atk_range < 0:
-		atk_range = 0
-
-
-# here we keep between turn buffs and if need to reset completely we use reset_energy_based_stats()
-func set_new_turn_stats():
-	attack = current_attack
-	damage = current_dmg
-	defense = current_defense
-	atk_range = current_atk_range
-	move_distance = current_move_distance
-	if energy < 1:
-		energy = 1
-	if move_distance < 0:
-		move_distance = 0
-	if defense < 0:
-		defense = 0
-	if attack < 0:
-		attack = 0
-	if damage < 0:
-		damage = 0
-	if atk_range < 0:
-		atk_range = 0
+	if current_battle_move_distance < 0:
+		current_battle_move_distance = 0
+	if current_battle_defense < 0:
+		current_battle_defense = 0
+	if current_battle_attack < 0:
+		current_battle_attack = 0
+	if current_battle_damage < 0:
+		current_battle_damage = 0
+	if current_battle_atk_range < 0:
+		current_battle_atk_range = 0
 
 
 func _ready():
+	if get_node("/root").has_node("Camera2D"):
+		get_node("/root/Camera2D").current = false
 	set_process(true)
 
 
@@ -95,7 +90,7 @@ func attack(target):
 		stats if we want to undo the attack) ELSE do the move to tile stuff
 	"""
 	var is_in_attack_range = false
-	var adjacent_tiles_in_range = meta.get_adjacent_tiles_in_distance(current_tile, atk_range, "fill")
+	var adjacent_tiles_in_range = meta.get_adjacent_tiles_in_distance(current_tile, current_battle_atk_range, "fill")
 	for tile in adjacent_tiles_in_range:
 		if target.current_tile == tile:
 			is_in_attack_range = true
@@ -105,31 +100,28 @@ func attack(target):
 		chosen_tile = target.current_tile
 		move()
 		return
-
-	var attack_details = {
-		"damage": damage
-	}
-	if attack > 0 and main.checkIfNodeDeleted(target) == false and target.alive:
-		attack -= 1
-		target.take_damage(self, attack_details)
-		print('attacked!')
+	
+	var did_atk_hit = meta.attack(self, target, true)
+	if did_atk_hit:
+		if target.alive:
+			if not is_player_stealth(0):
+				target.chasing_player = true
 
 
-func take_damage(attacker, attack_details):
-	var dmg = attack_details["damage"] 
-	var hold_defense = defense
-
-	if defense > 0:
-		defense -= dmg
-		dmg -= hold_defense
-		if defense < 0:
-			defense = 0
-
-	if dmg < 0:
-		dmg = 0
-	health - dmg
-	if health <= 0:
-		alive = false
+func is_player_stealth(vol_mod=0):
+	var is_stealth = stealth
+	var vol_range = noise
+	if stealth: 
+		vol_range -= stealth_noise_val
+	
+	var attack_noise_range = meta.get_adjacent_tiles_in_distance(current_tile, vol_range, "fill")
+	for tile in attack_noise_range:
+		tile.modulate = Color(1, .1, .1, 1)
+		for enm in get_tree().get_nodes_in_group("enemies"):
+			if enm.alive and tile.index == enm.current_tile.index:
+				is_stealth = false
+	if invisible: is_stealth = true
+	return is_stealth
 
 
 func set_tile_target(target_node):
@@ -142,6 +134,17 @@ func set_tile_target(target_node):
 
 	target_tile = target_node
 	target_pos = target_node.global_position
+
+
+func reset_player():
+	handle_start_and_reset_vars()
+	var l = get_node("/root/level")
+	handle_start_and_reset_vars()
+	turn_start_tile = l.get_spawn_tile()
+	current_tile = turn_start_tile
+	position = turn_start_tile.global_position
+	chosen_tile = turn_start_tile
+	target_pos = turn_start_tile.global_position
 
 
 func set_spawn_tile(target_node):
@@ -171,9 +174,9 @@ func set_navigation():
 				path.append(t)
 				debug_idx_path.append(t.index)
 				break
-			if len(path) > remaining_move:
+			if len(path) > current_move_distance:
 				break
-		if len(path) > remaining_move:
+		if len(path) > current_move_distance:
 			break
 
 	print('debug_idx_path is ' + str(debug_idx_path) + ' made from start' + str(current_tile.index) + ' to '  + str(target_tile.index) + ' with point array ' + str(point_path))
@@ -185,7 +188,7 @@ func set_navigation():
 
 func handle_start_and_reset_vars():
 	if current_tile.forest_path:
-		remaining_move += 2
+		current_move_distance += 2
 	if moving:
 		moving = false
 
@@ -202,10 +205,13 @@ func reset_turn():
 
 func start_turn():
 	# start turn
-	set_new_turn_stats()
+	$cam.position = Vector2(0, 0)
+	$cam.current = true
+	$cam.visible = true
 	if energy <= 0:
 		reset_energy_based_stats()
-	remaining_move = move_distance
+	meta.set_new_turn_stats(self)
+	meta.set_end_and_start_turn_tile_based_details(self, current_tile)
 	var l = get_node("/root/level")
 	var default_weight =  meta.unccupied_tile_weight if current_tile.can_move else meta.wall_tile_weight
 	l.level_astar.set_point_weight_scale(current_tile.index, default_weight)
@@ -215,17 +221,18 @@ func start_turn():
 
 
 func stop_turn():
+	meta.reset_graphics_and_overlays()
 	var l = get_node("/root/level")
 	l.level_astar.set_point_weight_scale(current_tile.index, meta.occupied_tile_weight)
 	processing_turn = false
-	if current_tile.defense_buff > 0 and defense <= default_defense:
-		current_defense += current_tile.defense_buff
-		print('got forest bonus')
+	meta.set_end_and_start_turn_tile_based_details(self, current_tile)
 	current_tile.player_on_tile = true
+	$cam.visible = false
+	meta.hovering_on_something = false
 
 
 func move():
-	if remaining_move > 0:
+	if current_move_distance > 0:
 		set_tile_target(chosen_tile)
 		set_navigation()
 		moving = true
@@ -233,36 +240,61 @@ func move():
 		moving = false
 
 
+func move_cam(node):
+	if main.shaking:
+		return
+	var level = get_node("/root/level")
+	if not node or not level:
+		$cam.position = self.global_position
+		return
+
+	$cam.position = clamp_vector(get_viewport().get_mouse_position() - node.position, node.position, level.mouse_cam_range)
+
+
+	# $cam.position = self.position
+func clamp_vector(vector, clamp_origin, clamp_length):
+    var offset = vector - clamp_origin
+    var offset_length = offset.length()
+    if offset_length <= clamp_length:
+        return vector
+    return clamp_origin + offset * (clamp_length / offset_length)
+
+
 func _process(delta):
 	# note the path is a list of actual tiles 
-	if meta.player_turn and moving:
-		if path.size() > 0:
-			if not path[0].can_move:
-				path = []
-				return
-			var d = self.global_position.distance_to(path[0].global_position)
-			if d > 10:
-				position = self.global_position.linear_interpolate(path[0].global_position, (speed * delta)/d)
-			else:
-				if path[0] != current_tile: # ensure we don't count starting tile
-					remaining_move -= 1
-				current_tile = path[0]
-				position = current_tile.global_position
-				path.remove(0)
-				var stop_path = false
-				if len(path) > 0:
-					if not path[0].can_move:
-						stop_path = true
-					for enm in get_tree().get_nodes_in_group("enemies"):
-						if main.checkIfNodeDeleted(enm) == false and enm.alive and enm.current_tile and enm.current_tile.index == path[0].index:
-							stop_path = true
-							break
-						# if our next move would be the same as the player's stop and end move
-				else:
-					stop_path = true
-				if stop_path:
+	#if meta.player_turn:
+	if meta.player_turn:
+		if not meta.hovering_on_something:
+			get_node("/root/level").attach_text_overlay($cam, true)
+		if moving:
+			#move_cam(self)
+			if path.size() > 0:
+				if not path[0].can_move:
 					path = []
-				#if len(path) > 1: # don't remove starting/current index
-		elif moving:
-			moving = false
-			position = current_tile.global_position
+					return
+				var d = self.global_position.distance_to(path[0].global_position)
+				if d > 4:
+					position = self.global_position.linear_interpolate(path[0].global_position, (speed * delta)/d)
+				else:
+					if path[0] != current_tile: # ensure we don't count starting tile
+						current_move_distance -= 1
+					current_tile = path[0]
+					position = current_tile.global_position
+					path.remove(0)
+					var stop_path = false
+					if len(path) > 0:
+						if not path[0].can_move:
+							stop_path = true
+						for enm in get_tree().get_nodes_in_group("enemies"):
+							if main.checkIfNodeDeleted(enm) == false and enm.alive and enm.current_tile and enm.current_tile.index == path[0].index:
+								stop_path = true
+								break
+							# if our next move would be the same as the player's stop and end move
+					else:
+						stop_path = true
+					if stop_path:
+						path = []
+					#if len(path) > 1: # don't remove starting/current index
+			elif moving:
+				moving = false
+				position = current_tile.global_position
