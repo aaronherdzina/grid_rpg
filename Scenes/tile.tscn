@@ -98,15 +98,6 @@ position = Vector2( -0.0883824, -0.176782 )
 scale = Vector2( 0.05, 0.05 )
 texture = ExtResource( 2 )
 
-[node name="Button" type="Button" parent="."]
-margin_left = -60.0
-margin_top = -59.0
-margin_right = 61.0
-margin_bottom = 61.0
-__meta__ = {
-"_edit_use_anchors_": false
-}
-
 [node name="Sprite" type="Sprite" parent="."]
 position = Vector2( 0, -0.176781 )
 scale = Vector2( 0.16, 0.16 )
@@ -132,6 +123,16 @@ anims/wobble = SubResource( 1 )
 [node name="VisibilityEnabler2D" type="VisibilityEnabler2D" parent="."]
 position = Vector2( -0.999999, -1.00001 )
 scale = Vector2( 10.65, 9.79999 )
+
+[node name="Button" type="Button" parent="."]
+self_modulate = Color( 1, 1, 1, 0 )
+margin_left = -76.0
+margin_top = -72.0
+margin_right = 44.0
+margin_bottom = 40.0
+__meta__ = {
+"_edit_use_anchors_": false
+}
 [connection signal="mouse_entered" from="Button" to="." method="_on_Button_mouse_entered"]
 [connection signal="mouse_exited" from="Button" to="." method="_on_Button_mouse_exited"]
 [connection signal="pressed" from="Button" to="." method="_on_Button_pressed"]

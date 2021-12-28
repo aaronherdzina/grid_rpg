@@ -172,19 +172,19 @@ func handle_in_battle_input(action):
 	elif action == "scroll_forward":
 		if get_node("/root").has_node("player"):
 			var player = get_node("/root/player")
-			if player.get_node("cam").zoom.x > .5:
-				player.get_node("cam").zoom.x -= zoom_increment
-				player.get_node("cam").zoom.y -= zoom_increment
-				var overlay = player.get_node("cam/overlays and underlays")
-				overlay.set_scale(player.get_node("cam").zoom)
+			if player.get_node("cam_body/cam").zoom.x > .5:
+				player.get_node("cam_body/cam").zoom.x -= zoom_increment
+				player.get_node("cam_body/cam").zoom.y -= zoom_increment
+				var overlay = player.get_node("cam_body/cam/overlays and underlays")
+				overlay.set_scale(player.get_node("cam_body/cam").zoom)
 	elif action == "scroll_back":
 		if get_node("/root").has_node("player"):
 			var player = get_node("/root/player")
-			if player.get_node("cam").zoom.x < 1.5:
-				player.get_node("cam").zoom.x += zoom_increment
-				player.get_node("cam").zoom.y += zoom_increment
-				var overlay = player.get_node("cam/overlays and underlays")
-				overlay.set_scale(player.get_node("cam").zoom)
+			if player.get_node("cam_body/cam").zoom.x < 1.5:
+				player.get_node("cam_body/cam").zoom.x += zoom_increment
+				player.get_node("cam_body/cam").zoom.y += zoom_increment
+				var overlay = player.get_node("cam_body/cam/overlays and underlays")
+				overlay.set_scale(player.get_node("cam_body/cam").zoom)
 	elif action == "back": 
 		if meta.player_turn:
 			if not get_node("/root").has_node("player"):
@@ -235,19 +235,19 @@ func handle_in_battle_input(action):
 	if action == "up":
 		if get_node("/root").has_node("player"):
 			var p = get_node("/root/player")
-			p.get_node("cam").position.y -= cam_move_vel
+			p.get_node("cam_body").position.y -= round(cam_move_vel * .5)
 	elif action == "down":
 		if get_node("/root").has_node("player"):
 			var p = get_node("/root/player")
-			p.get_node("cam").position.y += cam_move_vel
+			p.get_node("cam_body").position.y += round(cam_move_vel * .5)
 	if action == "left":
 		if get_node("/root").has_node("player"):
 			var p = get_node("/root/player")
-			p.get_node("cam").position.x -= cam_move_vel
+			p.get_node("cam_body").position.x -= round(cam_move_vel * .5)
 	elif action == "right":
 		if get_node("/root").has_node("player"):
 			var p = get_node("/root/player")
-			p.get_node("cam").position.x += cam_move_vel
+			p.get_node("cam_body").position.x += round(cam_move_vel * .5)
 
 
 func make_timer(time=0):
@@ -327,7 +327,8 @@ func cameraShake(cam, mag, timeToShake):
 		var pos = Vector2()
 		pos.x = rand_range(-mag, mag)
 		pos.y = rand_range(-mag, mag)
-		cam.position = pos
+		if cam and checkIfNodeDeleted(cam) == false:
+			cam.position = pos
 		timeToShake -= get_process_delta_time()
 
 		var timer = Timer.new()

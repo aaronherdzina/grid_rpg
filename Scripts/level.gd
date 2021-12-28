@@ -22,10 +22,10 @@ var random_lvl = {
 	"tile_list": []
 	}
 
-var max_lvl_cols = 15
+var max_lvl_cols = 18
 var min_lvl_cols = 5
 
-var max_lvl_rows = 17
+var max_lvl_rows = 22
 var min_lvl_rows = 7
 # debug for pathfinding tests
 
@@ -39,10 +39,10 @@ var bottom_tiles = []
 var left_tiles = []
 var right_tiles = []
 var round_turns = []
-var tile_gap = 145
-var far_tile_gap_setting = 150
+var tile_gap = 130
+var far_tile_gap_setting = 145
 var far_gap_tile_outline_size = 1.012
-var close_tile_gap_setting = 140
+var close_tile_gap_setting = 135
 var close_gap_tile_outline_size = 1.01
 var enms = 5
 var level_astar = null
@@ -233,7 +233,7 @@ func spawn_premade_tiles(lvl_obj, overwrite_details=true, preset_course=false):
 
 			if not starting_tile:
 				starting_tile = t
-				t.position = Vector2(tile_gap, tile_gap)
+				t.position = Vector2(0, 0)
 			else:
 				t.position = Vector2(starting_tile.global_position.x -\
 									(r * (-tile_gap)),\
@@ -320,30 +320,29 @@ func randomize_level(lvl_obj):
 	lvl_obj["cols"] = floor(rand_range(min_lvl_cols, max_lvl_cols))
 	lvl_obj["rows"] = floor(rand_range(min_lvl_rows, max_lvl_rows))
 	var tile_count  = lvl_obj["cols"] * lvl_obj["rows"]
-	var enms = 2 + round(tile_count * .02)
+	var enms = 2 + round(tile_count * .01)
 	var player_spawned = false
 	map_tiles(lvl_obj)
 	#
 	for t in level_tiles:
-		if t.row <= lvl_obj["rows"] and t.col <= lvl_obj["cols"] and\
-		   t.row >= 0 and t.col >= 0:
-			if rand_range(0, 1) >= .9:
-				t.map_tile_type("water")
-			elif rand_range(0, 1) >= .7 and enms > 0:
-				enms -= 1
-				t.map_tile_type("enemy spawn")
-			elif rand_range(0, 1) >= .8:
-				t.map_tile_type("forest path")
-			else:
-				t.map_tile_type("move")
+			if t.row <= lvl_obj["rows"] and t.col <= lvl_obj["cols"] and\
+			   t.row >= 0 and t.col >= 0:
+				if not "Player Spawn" in t.tags:
+						if rand_range(0, 1) >= .88:
+							t.map_tile_type("water")
+						elif rand_range(0, 1) >= .97 and enms > 0:
+							enms -= 1
+							t.map_tile_type("enemy spawn")
+						elif rand_range(0, 1) >= .87:
+							t.map_tile_type("forest path")
+						else:
+							t.map_tile_type("move")
 	
 	for t in level_tiles:
-		if not player_spawned and t.row <= lvl_obj["rows"] and t.col <= lvl_obj["cols"] and\
-		   t.row >= 0 and t.col >= 0 and "move" in t.tags:
-			for n in t.neighbors:
-				if not "wall" in n.tags:
-					n.map_tile_type("player spawn")
-					break
+		if t.row > 0 and t.col > 0 and not player_spawned and t.row <= lvl_obj["rows"] and t.col <= lvl_obj["cols"] and\
+		   t.row >= 0 and t.col >= 0 and not "Enemy Spawn" in t.tags and rand_range(0, 1) >= .95:
+				t.map_tile_type("player spawn")
+				player_spawned = true
 		if player_spawned:
 			break
 	#
@@ -544,10 +543,12 @@ func spawn_player(new_player=true):
 		meta.current_characters.append(p)
 		meta.current_character_turn = p
 		var spawn_tile = level_tiles[0]
+		print("lking for p spawn")
 		for t in level_tiles:
-			#print("here???" + str(t.player_spawn) + str(t.can_move))
-			if t.player_spawn:
+			if t.spawn_player:
+				print("here???" + str(t.spawn_player) + str(t))
 				spawn_tile = t
+				break
 		"""
 		var idx = len(level_tiles) - 1
 		var prefered_index = 0
@@ -573,7 +574,7 @@ func spawn_player(new_player=true):
 
 func get_spawn_tile():
 	for t in level_tiles:
-		if t.player_spawn:
+		if t.spawn_player:
 			return t
 	print("no spawn could be looking for 'tee'???")
 
@@ -584,8 +585,8 @@ func spawn_player_old():
 	var spawn_tile = level_tiles[0]
 	var count = 0
 	for t in level_tiles:
-		print("here???" + str(t.player_spawn) + str(t.can_move))
-		if t.can_move and t.player_spawn:
+		print("here???" + str(t.spawn_player) + str(t.can_move))
+		if t.can_move and t.spawn_player:
 			print("acceptable spawn point")
 			if spawn_tile == level_tiles[0] and t != level_tiles[0] and t.row != 0 and t.col != 0:
 				print("found player tile")
@@ -727,7 +728,7 @@ func process_enemy_turns():
 			if not round_turns[0].processing_turn:
 				round_turns[0].start_turn()
 			var player = get_node("/root/player")
-			while round_turns[0].processing_turn:
+			while round_turns[0] and round_turns[0].processing_turn:
 				change_turn_display_name(round_turns[0])
 				if player and main.checkIfNodeDeleted(player) == false:
 					pass
@@ -743,10 +744,14 @@ func process_enemy_turns():
 				turn_time_limit -= 1
 				if turn_time_limit <= 0:
 					print("turn didn't end before limit moving on")
-					if len(round_turns) > 0: round_turns[0].stop_turn("level.gd too slow")
+					if len(round_turns) > 0 and round_turns[0] and main.checkIfNodeDeleted(round_turns[0]) == false:
+						round_turns[0].stop_turn("level.gd too slow")
 					if turn_time_limit <= -round(turn_time_limit * .50):
 						break
 			print('turn over')
+			if round_turns[0].should_remove:
+				print("should remove")
+				round_turns[0].remove_enemy()
 			round_turns.remove(0)
 		change_turn_display_name(get_node("/root/player"))
 		processing_turns = false
@@ -761,8 +766,8 @@ func end_turn():
 	var p = get_node("/root/player")
 	p.stealth = is_player_stealth()
 	if meta.player_turn: 
-		p.get_node("cam/overlays and underlays/stealth_overlay").visible = p.stealth
-		p.get_node("cam/overlays and underlays/chased_overlay").visible = not p.stealth
+		p.get_node("cam_body/cam/overlays and underlays/stealth_overlay").visible = p.stealth
+		p.get_node("cam_body/cam/overlays and underlays/chased_overlay").visible = not p.stealth
 		if p.stealth:
 			print('here? stealth')
 		meta.player_turn = false
@@ -773,8 +778,8 @@ func end_turn():
 				round_turns.append(enm)
 		process_enemy_turns()
 	else:
-		p.get_node("cam/overlays and underlays/stealth_overlay").visible = p.stealth
-		p.get_node("cam/overlays and underlays/chased_overlay").visible = not p.stealth
+		p.get_node("cam_body/cam/overlays and underlays/stealth_overlay").visible = p.stealth
+		p.get_node("cam_body/cam/overlays and underlays/chased_overlay").visible = not p.stealth
 		
 		if p.stealth:
 			print('here? stealth')

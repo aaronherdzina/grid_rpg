@@ -1,5 +1,7 @@
 extends Node2D
 
+const FOLLOW_SPEED = 600
+
 var speed = rand_range(300, 500)
 var char_name = "Player"
 var path = []
@@ -18,7 +20,9 @@ var processing_turn = false
 var stealth = true
 var invisible = false
 var player_cam_clamp_distance = 200
+var can_move_cam = true
 
+var cam_vel = Vector2(0, 0)
 var noise = 2
 var cam_free_move = false
 var current_battle_attack = 2
@@ -31,23 +35,25 @@ var current_battle_defense = 0
 var can_attack = true
 var energy = 3
 var cam_node_pos = self.position
-
+var selected_attack = meta.standard_atk_type
 var default_energy = 3
 var default_atk_range = 1
 var default_attack = 2
-var default_damage = 3
+var default_damage = 2
 var default_defense = 0
 var default_distance = 3
-
+var current_opportunity_attacks = 2
+var current_battle_opportunity_attacks = 1
+var battle_opportunity_attacks = 1
 var battle_energy_debuff = 0
 var battle_attack_debuff = 0
 var battle_damage_debuff = 0
 var battle_defense_debuff = 0
 var battle_move_debuff = 0
 var alive = true
-
+var mouse_follow_pos = Vector2(0, 0)
 var current_attack = 2
-var current_damage = 3
+var current_damage = 2
 var current_defense = 0
 var current_atk_range = 1
 
@@ -56,7 +62,9 @@ var char_agil = 8 # move speed,
 var char_tech = 6 # char energy max, ranged dmg donus, 
 var char_weaponry = 7 # atks, atk range sometimes, dmg
 
-
+var can_atk = true
+var current_pt_dmg = 0
+var current_pt_range = 0
 # when energy runs out buff are removed and we set to our default stats
 func reset_energy_based_stats():
 	current_attack = default_attack
@@ -85,7 +93,7 @@ func _ready():
 	set_process(true)
 
 
-func attack(target):
+func attack(target, should_move=true, attack_name="standard"):
 	""" Check tile, see if enemy is there and we are in range, if so attack (keep
 		stats if we want to undo the attack) ELSE do the move to tile stuff
 	"""
@@ -96,12 +104,12 @@ func attack(target):
 			is_in_attack_range = true
 			break
 
-	if not is_in_attack_range:
+	if not is_in_attack_range and should_move:
 		chosen_tile = target.current_tile
 		move()
 		return
 	
-	var did_atk_hit = meta.attack(self, target, true)
+	var did_atk_hit = meta.attack(self, target, true, attack_name)
 	if did_atk_hit:
 		if target.alive:
 			if not is_player_stealth(0):
@@ -187,8 +195,6 @@ func set_navigation():
 
 
 func handle_start_and_reset_vars():
-	if current_tile.forest_path:
-		current_move_distance += 2
 	if moving:
 		moving = false
 
@@ -203,11 +209,20 @@ func reset_turn():
 	handle_start_and_reset_vars()
 
 
+func reset_can_atk():
+	var timer = main.make_timer(.3)
+	timer.start()
+	yield(timer, "timeout")
+	timer.queue_free()
+	can_atk = true
+
+
+
 func start_turn():
 	# start turn
-	$cam.position = Vector2(0, 0)
-	$cam.current = true
-	$cam.visible = true
+	$cam_body/cam.position = Vector2(0, 0)
+	$cam_body/cam.current = true
+	$cam_body/cam.visible = true
 	if energy <= 0:
 		reset_energy_based_stats()
 	meta.set_new_turn_stats(self)
@@ -227,11 +242,13 @@ func stop_turn():
 	processing_turn = false
 	meta.set_end_and_start_turn_tile_based_details(self, current_tile)
 	current_tile.player_on_tile = true
-	$cam.visible = false
+	$cam_body/cam.visible = false
 	meta.hovering_on_something = false
 
 
 func move():
+	if not chosen_tile or chosen_tile == current_tile:
+		return
 	if current_move_distance > 0:
 		set_tile_target(chosen_tile)
 		set_navigation()
@@ -240,15 +257,32 @@ func move():
 		moving = false
 
 
-func move_cam(node):
-	if main.shaking:
-		return
-	var level = get_node("/root/level")
-	if not node or not level:
-		$cam.position = self.global_position
+func move_cam(dir):
+	if main.shaking or not can_move_cam and dir != "stop":
 		return
 
-	$cam.position = clamp_vector(get_viewport().get_mouse_position() - node.position, node.position, level.mouse_cam_range)
+	print("in move_cam(), dir="+str(dir))
+		
+	if "up" in dir:
+		mouse_follow_pos = Vector2(0, -1)
+		#can_move_cam = true
+		#cam_vel.y = -1
+	elif "down" in dir:
+		mouse_follow_pos = Vector2(0, 1)
+		#can_move_cam = true
+		#cam_vel.y = 1
+
+	if "left" in dir:
+		mouse_follow_pos = Vector2(-1, 0)
+		#can_move_cam = true
+		#cam_vel.x = -1
+	elif "right" in dir:
+		mouse_follow_pos = Vector2(1, 0)
+		#can_move_cam = true
+		#cam_vel.x = 1
+	if  dir == "stop" and can_move_cam:
+		mouse_follow_pos = Vector2(0, 0)
+		return
 
 
 	# $cam.position = self.position
@@ -260,26 +294,46 @@ func clamp_vector(vector, clamp_origin, clamp_length):
     return clamp_origin + offset * (clamp_length / offset_length)
 
 
+func set_passthrough_tile_based_details(t):
+	meta.set_passthrough_tile_based_details(self, t)
+
+
+func set_next_current_tile(tile):
+	if path[0] != current_tile: # ensure we don't count starting tile
+		meta.check_if_in_op_atk_range()
+		current_move_distance -= 1
+		current_tile = tile
+		position = current_tile.global_position
+		set_passthrough_tile_based_details(tile)
+		meta.check_if_in_pt_atk_range()
+
+
+func _physics_process(delta):
+	if not mouse_follow_pos:
+		return
+	
+	$cam_body.move_and_slide(mouse_follow_pos * FOLLOW_SPEED)
+
+
 func _process(delta):
 	# note the path is a list of actual tiles 
 	#if meta.player_turn:
 	if meta.player_turn:
 		if not meta.hovering_on_something:
-			get_node("/root/level").attach_text_overlay($cam, true)
+			get_node("/root/level").attach_text_overlay($cam_body/cam/bottom_cam_pos, true)
 		if moving:
-			#move_cam(self)
 			if path.size() > 0:
 				if not path[0].can_move:
 					path = []
 					return
+				meta.check_if_in_op_atk_range()
 				var d = self.global_position.distance_to(path[0].global_position)
 				if d > 4:
 					position = self.global_position.linear_interpolate(path[0].global_position, (speed * delta)/d)
 				else:
 					if path[0] != current_tile: # ensure we don't count starting tile
 						current_move_distance -= 1
-					current_tile = path[0]
-					position = current_tile.global_position
+					set_next_current_tile(path[0])
 					path.remove(0)
 					var stop_path = false
 					if len(path) > 0:
@@ -298,3 +352,35 @@ func _process(delta):
 			elif moving:
 				moving = false
 				position = current_tile.global_position
+
+
+func _on_top_btn_mouse_entered():
+	move_cam("up")
+
+
+func _on_left_btn_mouse_entered():
+	move_cam("left")
+
+
+func _on_right_btn_mouse_entered():
+	move_cam("right")
+
+
+func _on_bottom_btn_mouse_entered():
+	move_cam("down")
+
+
+func _on_top_btn_mouse_exited():
+	move_cam("stop")
+
+
+func _on_left_btn_mouse_exited():
+	move_cam("stop")
+
+
+func _on_right_btn_mouse_exited():
+	move_cam("stop")
+
+
+func _on_bottom_btn_mouse_exited():
+	move_cam("stop")

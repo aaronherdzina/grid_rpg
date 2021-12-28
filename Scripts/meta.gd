@@ -1,6 +1,12 @@
 extends Node
 
-var char_names = ["Thief", "Brute", "Ranger", "Wizard", "Grunt"]
+var char_names = ["Patrol Construct", "Brute", "Ranger", "Wizard", "Grunt"]
+
+var standard_atk_type = "standard"
+var throw_atk_type = "throw"
+var opportunity_atk_type = "opportunity"
+var passthrough_atk_type = "passthrough"
+var push_atk_type = "push"
 
 var current_level_cols = 10
 var current_level_rows = 6
@@ -24,17 +30,23 @@ func _ready():
 	pass # Replace with function body.
 
 var course_1 = {
-	"cols": 7,
-	"rows": 9,
-	"tile_list": ["enemy spawn", "move", "forest path", "move", "move", "move", "move",
-				  "move", "water", "water", "wall", "move", "move", "wall",
-				  "move", "water", "move", "move", "move", "move", "move",
-				  "move", "water", "move", "enemy spawn", "wall", "move", "move",
-				  "move", "water", "move", "move", "move", "", "move",
-				  "move", "water", "move", "water", "water", "forest path", "move",
-				  "enemy spawn", "wall", "move", "water", "water", "water", "move",
+	"cols": 15,
+	"rows": 7,
+	"tile_list": [ "enemy spawn", "move", "forest path", "move", "move", "move", "move",
+				  "move", "water", "wall", "wall", "move", "move", "wall",
+				  "move", "water", "move", "wall", "wall", "move", "move",
+				  "move", "wall", "wall", "enemy spawn", "move", "move", "move",
+				  "move", "wall", "move", "move", "move", "move", "move",
+				  "move", "wall", "move", "water", "water", "forest path", "move",
+				  "enemy spawn", "wall", "move", "water", "water", "water", "water",
+				  "move", "move", "wall", "water", "water", "water", "move",
+				  "move", "move", "wall", "enemy spawn", "water", "water", "player spawn",
+				  "move", "move", "wall", "wall", "wall", "water", "move",
 				  "move", "move", "move", "water", "water", "water", "move",
-				  "move", "move", "move", "enemy spawn", "wall", "water", "player spawn",]
+				  "move", "move", "wall", "water", "wall", "move", "move",
+				  "move", "wall", "wall", "water", "wall", "wall", "move",
+				  "move", "wall", "wall", "water", "wall", "wall", "move",
+				  "move", "move", "move", "move", "move", "move", "enemy spawn",]
 	}
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
@@ -65,6 +77,7 @@ func set_new_turn_stats(char_node):
 	char_node.current_defense = char_node.current_battle_defense
 	char_node.current_atk_range = char_node.current_battle_atk_range
 	char_node.current_move_distance = char_node.current_battle_move_distance
+	char_node.current_opportunity_attacks = char_node.current_battle_opportunity_attacks
 	fix_char_stat_min_vals(char_node)
 
 
@@ -88,6 +101,107 @@ func set_passthrough_tile_based_details(char_node, tile):
 	char_node.noise += tile.passthrough_vol
 	char_node.health += tile.passthrough_hp
 	char_node.current_move_distance += tile.passthrough_move
+
+
+func check_if_in_pt_atk_range(enm=null):
+	""" no enm val? then assume its for player """
+	
+	var player = get_node("/root/player")
+	var moving_char = enm if enm else player
+	var large_check_needed = false
+	if not player and not enm:
+		print("called check_if_in_pt_atk_range but not moving nodes found")
+		return
+	if moving_char == player:
+		for enm in get_tree().get_nodes_in_group("enemies"):
+			if enm.alive and enm.current_pt_dmg > 0:
+				var tiles_in_range = meta.get_adjacent_tiles_in_distance(enm.current_tile, enm.current_pt_range, enm.atk_tile_pattern_name)
+				for t in tiles_in_range:
+					if t.index == player.current_tile.index:
+						var attack_details = {
+							"damage": player.current_pt_dmg,
+							"attack_name": passthrough_atk_type
+						}
+						take_damage(player, attack_details, moving_char, false)
+						return
+	elif player.alive and player.current_pt_dmg > 0:
+		var tiles_in_range = meta.get_adjacent_tiles_in_distance(player.current_tile, player.current_pt_range, "fill")
+		for n in tiles_in_range:
+			if n.index == moving_char.current_tile.index:
+				var attack_details = {
+					"damage": player.current_pt_dmg,
+					"attack_name": passthrough_atk_type
+				}
+				take_damage(player, attack_details, moving_char, false)
+				return
+
+
+func check_if_in_op_atk_range(enm=null):
+	""" no enm val? then assume its for player """
+	var player = get_node("/root/player")
+	var moving_char = enm if enm else player
+	var large_check_needed = false
+	if not player and not enm:
+		print("called check_if_in_op_atk_range but not moving nodes found")
+		return
+	if moving_char == player:
+		for enm in get_tree().get_nodes_in_group("enemies"):
+			if enm.alive and enm.current_opportunity_attacks > 0:
+				var tiles_in_range = meta.get_adjacent_tiles_in_distance(enm.current_tile, enm.current_atk_range, enm.atk_tile_pattern_name)
+				for t in tiles_in_range:
+					if t.index == player.current_tile.index:
+						#check_if_player_attackable()
+						#get_tree().paused = true
+						player.get_node("cam_body/cam").current = false
+						enm.get_node("cam_body/cam").current = true
+						enm.handle_overheard_text("Opportunity Attack...", true)
+						enm.enm_specific_attack_details()
+						var tmr = main.make_timer(enm.atk_anim_delay)
+						tmr.start()
+						yield(tmr, "timeout")
+						tmr.queue_free()
+						
+						if enm.current_opportunity_attacks > 0:
+							attack(enm, player, false, opportunity_atk_type)
+							enm.current_opportunity_attacks -= 1
+						if enm.current_opportunity_attacks < 0:
+							enm.current_opportunity_attacks = 0
+						enm.handle_overheard_text("", false)
+			
+						var timer1 = main.make_timer(enm.between_atk_delay)
+						timer1.start()
+						yield(timer1, "timeout")
+						timer1.queue_free()
+
+						player.get_node("cam_body/cam").current = true
+						enm.get_node("cam_body/cam").current = false
+						return
+	elif player.alive and player.current_opportunity_attacks > 0:
+		var tiles_in_range = meta.get_adjacent_tiles_in_distance(player.current_tile, player.current_atk_range, "fill")
+		for n in tiles_in_range:
+			if n.index == moving_char.current_tile.index:
+				print("p op atks: " + str(player.current_opportunity_attacks))
+				var remaining_atks = player.current_opportunity_attacks
+
+				var pre_atk_timer = main.make_timer(.50)
+				pre_atk_timer.start()
+				yield(pre_atk_timer, "timeout")
+				pre_atk_timer.queue_free()
+
+				if player.current_opportunity_attacks > 0:
+					player.attack(moving_char, false, opportunity_atk_type)
+					player.current_opportunity_attacks -= 1
+				if player.current_opportunity_attacks < 0:
+					player.current_opportunity_attacks = 0
+
+				var timer1 = main.make_timer(.25)
+				timer1.start()
+				yield(timer1, "timeout")
+				timer1.queue_free()
+
+				print("p op2 atks: " + str(player.current_opportunity_attacks))
+				return
+
 
 func remove_enemies():
 	for enm in get_tree().get_nodes_in_group("enemies"):
@@ -164,7 +278,12 @@ func take_damage(attacker, attack_details, defender, is_player=false):
 	print(attacker.char_name + ' attacked ' + defender.char_name + ' for ' + str(attack_details["damage"]))
 	if defender.health <= 0:
 		if not is_player:
-			defender.remove_enemy()
+			if meta.player_turn:
+				defender.remove_enemy()
+			else: 
+				# for cases like opportunity attacks or anything else outside player turn
+				# this value is check completely after AI turns and remove_enemy() is then called if should_remove is true
+				defender.should_remove = true
 		else:
 			print("player is dead")
 
@@ -176,7 +295,7 @@ func get_char_dmg(attacker, defender):
 	return dmg
 
 
-func attack(attacker, defender, player_attacking=false):
+func attack(attacker, defender, player_attacking=false, attack_name="Standard"):
 	""" Check tile, see if enemy is there and we are in range, if so attack (keep
 		stats if we want to undo the attack) ELSE do the move to tile stuff
 	"""
@@ -184,6 +303,7 @@ func attack(attacker, defender, player_attacking=false):
 	var is_in_attack_range = false
 	var hit = false
 	var adjacent_tiles_in_range = meta.get_adjacent_tiles_in_distance(attacker.current_tile, attacker.current_atk_range, "fill")
+	if not adjacent_tiles_in_range: return
 	for tile in adjacent_tiles_in_range:
 		if defender.current_tile == tile:
 			is_in_attack_range = true
@@ -193,10 +313,11 @@ func attack(attacker, defender, player_attacking=false):
 		return false
 
 	var attack_details = {
-		"damage": get_char_dmg(attacker, defender)
+		"damage": get_char_dmg(attacker, defender),
+		"attack_name": attack_name
 	}
-
-	if attacker.current_attack > 0 and main.checkIfNodeDeleted(defender) == false and defender.alive:
+	if attacker.can_atk and attacker.current_attack > 0 and main.checkIfNodeDeleted(defender) == false and defender.alive:
+		attacker.can_atk = false
 		attacker.current_attack -= 1
 		hit = true
 		take_damage(attacker, attack_details, defender, not player_attacking)
@@ -205,7 +326,7 @@ func attack(attacker, defender, player_attacking=false):
 			shake_vel = 5
 		elif shake_vel > 20:
 			shake_vel = 20
-		main.cameraShake(attacker.get_node("cam"), shake_vel, .4)
+		main.cameraShake(attacker.get_node("cam_body/cam"), shake_vel, .4)
 		var dmg_effect = main.DMG_EFFECT_SCENE.instance()
 		get_node("/root").call_deferred("add_child", dmg_effect)
 		dmg_effect.position = defender.global_position
@@ -216,11 +337,12 @@ func attack(attacker, defender, player_attacking=false):
 	var l = get_node("/root/level")
 	if main.checkIfNodeDeleted(l) == false:
 		if l.is_player_stealth():
-			player.get_node("cam/overlays and underlays/stealth_overlay").visible = true
-			player.get_node("cam/overlays and underlays/chased_overlay").visible = false
+			player.get_node("cam_body/cam/overlays and underlays/stealth_overlay").visible = true
+			player.get_node("cam_body/cam/overlays and underlays/chased_overlay").visible = false
 		else:
-			player.get_node("cam/overlays and underlays/stealth_overlay").visible = player.invisible
-			player.get_node("cam/overlays and underlays/chased_overlay").visible = not player.invisible
+			player.get_node("cam_body/cam/overlays and underlays/stealth_overlay").visible = player.invisible
+			player.get_node("cam_body/cam/overlays and underlays/chased_overlay").visible = not player.invisible
+	attacker.reset_can_atk()
 	return hit
 
 

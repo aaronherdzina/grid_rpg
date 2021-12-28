@@ -6,6 +6,7 @@ var target_pos = Vector2()
 var target_tile = null
 var current_tile = null
 var processing_turn = false
+var should_remove = false
 var id = 0
 var char_name = "Enemy"
 var chasing_player = false
@@ -35,12 +36,15 @@ var control_cam = false
 var alive = true
 
 var noise = 2
-var current_attack = round(rand_range(1, 3))
+var current_attack = round(rand_range(1, 2))
 var current_damage = round(rand_range(1, 3))
+var current_atk_range = round(rand_range(.6, 1.7))
 var current_defense = 0
-var current_atk_range = round(rand_range(1, 2))
 var current_move_distance = current_battle_move_distance
 
+var current_opportunity_attacks = 1
+var default_opportunity_attacks = 1
+var current_battle_opportunity_attacks = 1
 var tiles_in_view = []
 var ending_move_tile = null
 var view_range = 1
@@ -49,9 +53,13 @@ var stealth_noise_val = 0
 var stealth_dmg_bonus = 0
 var stealth_dmg_mod = 1.2
 
-var atk_anim_delay = 1
-var between_atk_delay = 3
+var atk_anim_delay = .6
+var between_atk_delay = 1
 var player = null
+
+var can_atk = true
+var current_pt_dmg = 0
+var current_pt_range = 0
 
 func set_default_stats():
 	if energy < 1:
@@ -73,6 +81,13 @@ func set_default_stats():
 
 
 func _ready():
+	randomize()
+	should_remove = false
+	current_atk_range = round(rand_range(.6, 1.7))
+	current_attack = round(rand_range(1, 2))
+	current_damage = round(rand_range(1, 3))
+	current_atk_range = round(rand_range(.6, 1.7))
+	current_battle_move_distance = round(rand_range(2, 7))
 	set_process(true)
 
 
@@ -94,6 +109,8 @@ func set_spawn_tile(target_node):
 
 func check_if_player_attackable():
 	#var player = get_node("/root/player")
+	if not can_atk:
+		return
 	if not player or main.checkIfNodeDeleted(player) == true or current_attack <= 0:
 		return false
 	var tiles_in_view = meta.get_adjacent_tiles_in_distance(current_tile, current_atk_range, atk_tile_pattern_name)
@@ -137,9 +154,9 @@ func start_turn():
 	# start turn
 	player = get_node("/root/player")
 	processing_turn = true
-	$cam.zoom = player.get_node("cam").zoom
+	$cam_body/cam.zoom = player.get_node("cam_body/cam").zoom
 	control_cam = true
-	get_node("/root/level").attach_text_overlay($cam, true)
+	get_node("/root/level").attach_text_overlay($cam_body/cam, true)
 	handle_overheard_text("Thinking...")
 	if energy <= 0:
 		set_default_stats()
@@ -147,8 +164,8 @@ func start_turn():
 	view_range = current_battle_move_distance #current_atk_range
 	current_tile.enm_on_tile = false
 	meta.set_end_and_start_turn_tile_based_details(self, current_tile)
-	$cam.position = Vector2(0, 0)
-	$cam.current = true
+	$cam_body/cam.position = Vector2(0, 0)
+	$cam_body/cam.current = true
 
 	var timer = main.make_timer(.2)
 	timer.start()
@@ -161,7 +178,7 @@ func start_turn():
 	# process turn
 	# consider delay to move animations
 	handle_overheard_text("", false)
-	if chasing_player and check_if_player_attackable():
+	if chasing_player and check_if_player_attackable() and rand_range(0, 1) >= .4:
 		for atks in current_attack:
 			handle_overheard_text("Attacking...", true)
 			enm_specific_attack_details()
@@ -200,6 +217,14 @@ func enm_specific_attack_details():
 	$AnimationPlayer.play("ranged_attack")
 
 
+func reset_can_atk():
+	var timer = main.make_timer(.3)
+	timer.start()
+	yield(timer, "timeout")
+	timer.queue_free()
+	can_atk = true
+
+
 func remove_enemy(vol_range=0):
 	var l = get_node("/root/level")
 	alive = false
@@ -208,6 +233,7 @@ func remove_enemy(vol_range=0):
 		current_tile.enm_on_tile = false
 		current_tile = null
 	visible = false
+	queue_free()
 
 
 func stop_turn(stop_callee):
@@ -220,7 +246,8 @@ func stop_turn(stop_callee):
 	tiles_in_view = meta.get_adjacent_tiles_in_distance(current_tile, view_range, view_type)
 
 	var nearby_tile = meta.get_closest_adjacent_tile(self, current_tile, (not chasing_player), false)
-	chasing_player = false
+	
+	chasing_player = is_player_in_vision_range()
 	handle_overheard_text("", false)
 	var timer1 = Timer.new()
 	timer1.set_wait_time(.5)
@@ -239,7 +266,7 @@ func stop_turn(stop_callee):
 	meta.reset_graphics_and_overlays()
 	processing_turn = false
 	processing_after_move = false
-	$cam.current = false
+	$cam_body/cam.current = false
 
 
 
@@ -251,7 +278,7 @@ func is_player_in_vision_range():
 				print("player near " + char_name + " on tile " + str(n.index))
 				chasing_player = true
 				break
-			else:
+			elif chasing_player:
 				# check double neighbors when CONTINUING CHASE
 				for next_n in n.neighbors:
 					if n.index == player.current_tile.index or\
@@ -271,15 +298,14 @@ func move():
 	if chasing_player:
 		handle_overheard_text("", true)
 		modulate = Color(1, .8, .8, 1)
-		set_scale(Vector2(1.2, 1.2))
 		print('chasing player')
-		player.get_node("cam/overlays and underlays/stealth_overlay").visible = false
-		player.get_node("cam/overlays and underlays/chased_overlay").visible = true
+		player.get_node("cam_body/cam/overlays and underlays/stealth_overlay").visible = false
+		player.get_node("cam_body/cam/overlays and underlays/chased_overlay").visible = true
 		nearby_tile = meta.get_closest_adjacent_tile(self, player.current_tile)
 	else:
 		handle_overheard_text("Moving...", true)
 		modulate = Color(1, 1, 1, 1)
-		set_scale(Vector2(1, 1))
+	set_scale(Vector2(1, 1))
 	set_tile_target(nearby_tile if nearby_tile else current_tile)
 	set_navigation()
 	start_movement = true
@@ -295,17 +321,22 @@ func set_passthrough_tile_based_details(t):
 
 
 func set_next_current_tile(tile):
-	if path[0] != current_tile: # ensure we don't count starting tile
+	if path[0] != current_tile and tile != current_tile: # ensure we don't count starting tile
+		meta.check_if_in_op_atk_range(self)
 		current_move_distance -= 1
-	current_tile = tile
-	position = current_tile.global_position
-	set_passthrough_tile_based_details(tile)
+		current_tile = tile
+		position = current_tile.global_position
+		set_passthrough_tile_based_details(tile)
+		if not player.stealth:
+			chasing_player = is_player_in_vision_range()
+		meta.check_if_in_pt_atk_range(self)
 
 
 func handle_movement_animations(delta):
 	if alive and not meta.player_turn and start_movement:
 		var should_stop_path = false
 		if len(path) > 0:
+			meta.check_if_in_op_atk_range(self)
 			var d = self.global_position.distance_to(path[0].global_position)
 			if d > 4:
 				position = self.global_position.linear_interpolate(path[0].global_position, (speed * delta)/d)
@@ -324,7 +355,6 @@ func handle_movement_animations(delta):
 					should_stop_path = true
 				if should_stop_path:
 					path = []
-					
 				####
 				#MAKE FUNC TO END MOVE AND SNAP PLAYER TO TILE TO CALL WHEN TURN ENDS
 				#TO ENSURE CONSISTENT AI MOVEMENT
@@ -363,7 +393,7 @@ func _process(delta):
 	# note the path is a list of actual tiles 
 	if control_cam and not meta.player_turn:
 		var lvl = get_node("/root/level")
-		lvl.attach_text_overlay($cam, true)
+		lvl.attach_text_overlay($cam_body/cam, true)
 		#lvl.get_node("text_overlay").position = Vector2(self.global_position.x + lvl.text_x_buffer, self.global_position.y + lvl.text_y_buffer)
 	
 	if processing_turn:

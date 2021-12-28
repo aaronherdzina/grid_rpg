@@ -10,13 +10,13 @@ var index = 0
 var row = 0
 var col = 0
 var neighbors = []
-var player_spawn = false
 var highlight_background_color = Color(1, 1, .5, .7)
 var path_highlight_background_color = Color(.8, .8, 1, .7)
 var default_background_color = Color(0, 0, 0, 0)
 var too_far_background_color = Color(1, .3, .3, .2)
 var current_tile_background_color = Color(.3, .3, .6, .7)
-
+var hovering = false
+var pressing = false
 var highlight_tile_color = Color(1, 1, .8, 1)
 var path_highlight_tile_color = Color(.8, .8, 1, 1)
 var too_far_tile_color = Color(1, .8, .8, 1)
@@ -44,7 +44,7 @@ var passthrough_atk_range = 0
 var passthrough_damage = 0
 var passthrough_vol = 0
 var passthrough_hp = 0
-var passthrough_move = 1
+var passthrough_move = 0
 #
 var end_and_start_turn_defense = 0
 var end_and_start_turn_attack = 0
@@ -67,17 +67,44 @@ func _ready():
 #func _process(delta):
 #	pass
 
+func reset_vals():
+	spawn_enemies = false
+	player_on_tile = false
+	spawn_player = false
+	can_move = true
+	passthrough_defense = 0
+	passthrough_attack = 0
+	passthrough_atk_range = 0
+	passthrough_damage = 0
+	passthrough_vol = 0
+	passthrough_hp = 0
+	passthrough_move = 0
+#
+	end_and_start_turn_defense = 0
+	end_and_start_turn_attack = 0
+	end_and_start_turn_atk_range = 0
+	end_and_start_turn_damage = 0
+	end_and_start_turn_vol = 0
+	end_and_start_turn_hp = 0
+	end_and_start_turn_move = 0
+	special = false # used to check for things links tile highlighting.
+	water = false
+	forest = false
+	forest_path = false
+	enm_on_tile = false
+	custom_weight = false
+	tags = []
 
 func map_tile_type(tile_type):
 	if not get_node("/root").has_node("level"):
 		return
 	var l = get_node("/root/level")
+	reset_vals()
 	var weight =  float(meta.unccupied_tile_weight)
-	can_move = true
+	
 	if custom_weight:
 		weight = custom_weight
 
-	tags = []
 	visible = true
 	# $Sprite.set_texture(main.MOUNTAIN_TILE)
 	if tile_type == "move" or tile_type == "" or not tile_type:
@@ -141,9 +168,11 @@ func get_tile_neighbors(target=null):
 				neighbors.append(t)
 
 
-func _on_Button_pressed():
-	if not get_node("/root").has_node("level"):
+func on_press():
+	if pressing:
 		return
+	pressing = true
+
 	var l = get_node("/root/level")
 	if main.debug:
 		for t in l.level_tiles:
@@ -151,6 +180,11 @@ func _on_Button_pressed():
 			if not t.can_move:
 				t.modulate = Color(.4, .4, .4, 1)
 	move_or_attack()
+	pressing = false
+
+
+func _on_Button_pressed():
+	on_press()
 
 
 func move_or_attack():
@@ -158,12 +192,14 @@ func move_or_attack():
 		return
 	var p = get_node("/root/player")
 
-	if meta.player_turn:
+
+	if meta.player_turn and p.can_atk:
 		for enm in get_tree().get_nodes_in_group("enemies"):
 			if main.checkIfNodeDeleted(enm) == false and enm.alive and self.index == enm.current_tile.index:
-				p.attack(enm)
+				p.attack(enm, true, p.selected_attack)
 				return
-	if can_move:
+	if can_move and p.current_move_distance > 0:
+		print("moving to a tile?")
 		move_to_tile_on_press()
 
 
@@ -171,12 +207,13 @@ func move_to_tile_on_press():
 	if not meta.player_turn or not get_node("/root").has_node("player"):
 		return
 	var p = get_node("/root/player")
-	if meta.player_turn:
-		p.chosen_tile = self
-		p.move()
+	p.chosen_tile = self
+	p.move()
 
 
 func hover():
+	if hovering:
+		return
 	if not get_node("/root").has_node("player"):
 		return
 	if not get_node("/root").has_node("level"):
@@ -187,7 +224,8 @@ func hover():
 		meta.hovering_on_something = true
 	else:
 		return
-	l.attach_text_overlay(self)
+	hovering = true
+
 	var point_path = l.level_astar.get_id_path(player.current_tile.index, index)
 	var path = []
 	var debug_idx_path = []
@@ -222,23 +260,18 @@ func hover():
 		for t in l.level_tiles:
 			if p == t.index and t != player.current_tile:
 				t.get_node("Sprite").modulate = Color(.9, .9, 1, 1)
-				t.set_scale(Vector2(scale_var, scale_var))
 				path.append(t)
 				debug_idx_path.append(t.index)
 				index_count += 1
-				scale_var += scale_variant
+				t.get_node("AnimationPlayer").stop()
 				if len(path) > player.current_move_distance:
-					#t.z_index = index_count
-					# t.get_node("background").modulate = too_far_background_color
 					t.modulate = too_far_tile_color
 				elif len(path) == player.current_move_distance: # full move
 					t.get_node("AnimationPlayer").play("wobble repeat")
 					t.get_node("background").modulate = highlight_background_color
 					t.modulate = highlight_tile_color
-					#t.z_index = index_count
 				else:
 					t.get_node("AnimationPlayer").play("wobble")
-					#t.z_index = index_count
 					t.get_node("background").modulate = path_highlight_background_color
 					t.modulate = path_highlight_tile_color
 				break
@@ -260,6 +293,12 @@ func hover():
 			for t in enm.tiles_in_view:
 				t.modulate = enm_highlight_tile_color
 	l.get_node("text_overlay/tile_text").set_text(tile_text)
+	
+	for enm in get_tree().get_nodes_in_group("enemies"):
+		if enm.alive and enm.current_opportunity_attacks > 0:
+			var tiles_in_range = meta.get_adjacent_tiles_in_distance(enm.current_tile, enm.current_atk_range, enm.atk_tile_pattern_name)
+			for t in tiles_in_range:
+				t.modulate = Color(1, .4, .4, 1)
 
 
 func exit_hover():
@@ -269,6 +308,7 @@ func exit_hover():
 	if not get_node("/root").has_node("level"):
 		return
 	meta.reset_graphics_and_overlays()
+	hovering = false
 
 
 func _on_Button_mouse_entered():
@@ -277,3 +317,7 @@ func _on_Button_mouse_entered():
 
 func _on_Button_mouse_exited():
 	exit_hover()
+
+
+func _on_Button_button_up():
+	on_press()
