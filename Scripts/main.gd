@@ -164,7 +164,6 @@ func _input(event):
 		if current_screen == "battle":
 			handle_in_battle_input("right")
 
-
 func handle_in_battle_input(action):
 	if action == "start":
 		var level = get_node("/root/level")
@@ -193,22 +192,7 @@ func handle_in_battle_input(action):
 			player.reset_turn()
 	elif action == "spacebar":
 		if meta.can_spawn_level:
-			meta.can_spawn_level = false
-			meta.remove_enemies()
-			if get_node("/root").has_node("player"):
-				var p = get_node("/root/player")
-				p.queue_free()
-			var timer1 = Timer.new()
-			timer1.set_wait_time(.5)
-			timer1.set_one_shot(true)
-			get_node("/root").add_child(timer1)
-			timer1.start()
-			yield(timer1, "timeout")
-			timer1.queue_free()
-			var l = get_node("/root/level")
-			l.randomize_level(l.random_lvl)
-			#l.spawn_premade_tiles(l.random_lvl)
-			current_screen = 'battle'
+			meta.spawn_new_level()
 		##### old below
 		"""
 		for enm in get_tree().get_nodes_in_group("enemies"):

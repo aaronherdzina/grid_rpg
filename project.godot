@@ -25,6 +25,10 @@ main="*res://Scripts/main.gd"
 meta="*res://Scripts/meta.gd"
 globalUiDetails="*res://Scripts/UI/globalUiDetails.gd"
 
+[debug]
+
+settings/fps/force_fps=60
+
 [display]
 
 window/size/width=1920

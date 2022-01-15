@@ -105,7 +105,6 @@ func set_passthrough_tile_based_details(char_node, tile):
 
 func check_if_in_pt_atk_range(enm=null):
 	""" no enm val? then assume its for player """
-	
 	var player = get_node("/root/player")
 	var moving_char = enm if enm else player
 	var large_check_needed = false
@@ -134,6 +133,29 @@ func check_if_in_pt_atk_range(enm=null):
 				}
 				take_damage(player, attack_details, moving_char, false)
 				return
+
+
+func generate_level_goal():
+	return "destroy"
+
+
+func spawn_new_level():
+	can_spawn_level = false
+	remove_enemies()
+	if get_node("/root").has_node("player"):
+		var p = get_node("/root/player")
+		p.queue_free()
+	var timer1 = Timer.new()
+	timer1.set_wait_time(.5)
+	timer1.set_one_shot(true)
+	get_node("/root").add_child(timer1)
+	timer1.start()
+	yield(timer1, "timeout")
+	timer1.queue_free()
+	var l = get_node("/root/level")
+	l.randomize_level(l.random_lvl)
+	#l.spawn_premade_tiles(l.random_lvl)
+	main.current_screen = 'battle'
 
 
 func check_if_in_op_atk_range(enm=null):
@@ -174,7 +196,8 @@ func check_if_in_op_atk_range(enm=null):
 						timer1.queue_free()
 
 						player.get_node("cam_body/cam").current = true
-						enm.get_node("cam_body/cam").current = false
+						if enm and main.checkIfNodeDeleted(enm) == false:
+							enm.get_node("cam_body/cam").current = false
 						return
 	elif player.alive and player.current_opportunity_attacks > 0:
 		var tiles_in_range = meta.get_adjacent_tiles_in_distance(player.current_tile, player.current_atk_range, "fill")
@@ -223,6 +246,78 @@ func reset_graphics_and_overlays():
 	l.change_turn_display_name(player)
 
 
+func set_char_anims(char_node, char_action, char_current_tile, char_target_tile):
+	var target_tile_dif_row = abs(char_current_tile.row - char_target_tile.row)
+	var target_tile_dif_col = abs(char_current_tile.col - char_target_tile.col)
+	
+	if char_action == "move":
+		# cardinal directions only
+		if char_current_tile.row == char_target_tile.row or\
+			char_current_tile.col == char_target_tile.col:
+				# moving horizontal
+				if target_tile_dif_row > target_tile_dif_col:
+					# moving right
+					if char_current_tile.row < char_target_tile.row:
+						char_node.facing_dir = "bl_"
+						return "fr_walk_anim"
+					else: # moving left
+						char_node.facing_dir = "fr_"
+						return "bl_walk_anim"
+				else: # moving vertical
+					# if moving down
+					if char_current_tile.col < char_target_tile.col:
+						char_node.facing_dir = "br_"
+						return "fl_walk_anim"
+					else: # if moving up
+						char_node.facing_dir = "fl_"
+						return "br_walk_anim"
+		else: # moving at a diagnol
+			
+			# TODO: Below is just copied to use same anims
+				# moving mostly horizontal
+				if target_tile_dif_row > target_tile_dif_col:
+					# moving right
+					if char_current_tile.row < char_target_tile.row:
+						char_node.facing_dir = "fr_"
+						return "fr_walk_anim"
+					else: # moving left
+						char_node.facing_dir = "bl_"
+						return "bl_walk_anim"
+				else: # moving vertical
+					# if moving down
+					if char_current_tile.col < char_target_tile.col:
+						char_node.facing_dir = "fl_"
+						return "fl_walk_anim"
+					else: # if moving up
+						char_node.facing_dir = "br_"
+						return "br_walk_anim"
+
+
+func get_tile_in_line_from_target_tile(char_node, dist, start_tile, dir="horizontal"):
+	### FIX THIS FILE
+	var l = get_node("/root/level")
+	var idx = -1
+	var tile_found_in_dist = 0
+	for t in l.level_tiles:
+		if t.row == start_tile.row or t.col == start_tile.col: # must ensure we don't hit the A* logic to move around stuff, so stay in line
+			tile_found_in_dist += 1
+			char_node.path.append(t)
+			t.get_node("AnimationPlayer").stop()
+			if len(char_node.path) > char_node.current_move_distance:
+				pass
+			elif t.can_move:
+				char_node.path.append(t)
+	if tile_found_in_dist >= dist:
+		pass
+	#var point_path = l.level_astar.get_id_path(start_tile.index, target_tile.index)
+
+
+func knockback(dist, attacker, defender):
+	var l = get_node("/root/level")
+	#get_tile_in_line_from_target_tile(defender, dist, defender.current_tile)
+	#get_adjacent_tiles_in_distance(defender, )
+
+
 func roll_dice(successes_needed=1, roll_target=3, dice=["../sprites/basic_die.png"], chosen_tile=null):
 	var min_roll = 1
 	var max_roll = 6
@@ -262,6 +357,9 @@ func take_damage(attacker, attack_details, defender, is_player=false):
 	var l = get_node("/root/level")
 	var current_damage = attack_details["damage"] 
 	var hold_defense = defender.current_defense
+	var attacker_facing = attacker.get_node("Sprite").name.split("_")[0]
+	var defender_facing = defender.get_node("Sprite").name.split("_")[0]
+	
 	if hold_defense < 0: hold_defense = 0
 	if not is_player and not player.invisible:
 		defender.chasing_player = true
@@ -273,17 +371,13 @@ func take_damage(attacker, attack_details, defender, is_player=false):
 		current_damage = 0
 		defender.get_node("AnimationPlayer").play("attack_dodged")
 	else:
-		defender.get_node("AnimationPlayer").play("take_dmg_anim")
+		print("facing: " +str(defender.facing_dir + "knockback"))
+		defender.get_node("AnimationPlayer").play(defender.facing_dir + "knockback")
 	defender.health -= current_damage
 	print(attacker.char_name + ' attacked ' + defender.char_name + ' for ' + str(attack_details["damage"]))
 	if defender.health <= 0:
 		if not is_player:
-			if meta.player_turn:
-				defender.remove_enemy()
-			else: 
-				# for cases like opportunity attacks or anything else outside player turn
-				# this value is check completely after AI turns and remove_enemy() is then called if should_remove is true
-				defender.should_remove = true
+			defender.defeat_enemy()
 		else:
 			print("player is dead")
 

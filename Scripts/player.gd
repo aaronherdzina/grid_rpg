@@ -14,8 +14,8 @@ var previous_tile = null
 var moving = false
 var current_battle_move_distance = 5
 var current_move_distance = 5
-var health = 10
-var starting_turn_health = 10
+var health = 15
+var starting_turn_health = 50
 var processing_turn = false
 var stealth = true
 var invisible = false
@@ -26,7 +26,7 @@ var cam_vel = Vector2(0, 0)
 var noise = 2
 var cam_free_move = false
 var current_battle_attack = 2
-var current_battle_atk_range = 1
+var current_battle_atk_range = 3
 var current_battle_damage = 1
 var stealth_noise_val = 1
 var stealth_dmg_bonus = 1
@@ -37,7 +37,7 @@ var energy = 3
 var cam_node_pos = self.position
 var selected_attack = meta.standard_atk_type
 var default_energy = 3
-var default_atk_range = 1
+var default_atk_range = 3
 var default_attack = 2
 var default_damage = 2
 var default_defense = 0
@@ -55,8 +55,9 @@ var mouse_follow_pos = Vector2(0, 0)
 var current_attack = 2
 var current_damage = 2
 var current_defense = 0
-var current_atk_range = 1
+var current_atk_range = 3
 
+var facing_dir = "br_"
 var char_power = 10 # throw strength & distance, item cary max, wrestle, melee dmg bonus
 var char_agil = 8 # move speed, 
 var char_tech = 6 # char energy max, ranged dmg donus, 
@@ -258,7 +259,7 @@ func move():
 
 
 func move_cam(dir):
-	if main.shaking or not can_move_cam and dir != "stop":
+	if main.shaking or not can_move_cam and dir != "stop" or not meta.player_turn:
 		return
 
 	print("in move_cam(), dir="+str(dir))
@@ -300,12 +301,15 @@ func set_passthrough_tile_based_details(t):
 
 func set_next_current_tile(tile):
 	if path[0] != current_tile: # ensure we don't count starting tile
-		meta.check_if_in_op_atk_range()
+		# meta.check_if_in_op_atk_range()
 		current_move_distance -= 1
 		current_tile = tile
 		position = current_tile.global_position
 		set_passthrough_tile_based_details(tile)
 		meta.check_if_in_pt_atk_range()
+	path.remove(0)
+	if moving and len(path) > 0:
+		$AnimationPlayer.play("wireframe_" + meta.set_char_anims(self, "move", current_tile, path[0]))
 
 
 func _physics_process(delta):
@@ -326,7 +330,7 @@ func _process(delta):
 				if not path[0].can_move:
 					path = []
 					return
-				meta.check_if_in_op_atk_range()
+				# meta.check_if_in_op_atk_range()
 				var d = self.global_position.distance_to(path[0].global_position)
 				if d > 4:
 					position = self.global_position.linear_interpolate(path[0].global_position, (speed * delta)/d)
@@ -334,7 +338,6 @@ func _process(delta):
 					if path[0] != current_tile: # ensure we don't count starting tile
 						current_move_distance -= 1
 					set_next_current_tile(path[0])
-					path.remove(0)
 					var stop_path = false
 					if len(path) > 0:
 						if not path[0].can_move:

@@ -27,7 +27,7 @@ func _ready():
 	get_node("cont1/Control/Container/height").text = str(holdY)
 	
 	if get_node("cont1/Control/useController").text != "Keyboard & Mouse" and not main.useController:
-		get_node("cont1/Control/useController").text != "Keyboard & Mouse"
+		get_node("cont1/Control/useController").text = "Keyboard & Mouse"
 	elif get_node("cont1/Control/useController").text != "Gamepad" and main.useController:
 		get_node("cont1/Control/useController").text = "Gamepad" 
 	set_process(true)

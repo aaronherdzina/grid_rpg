@@ -1,4 +1,4 @@
-[gd_scene load_steps=9 format=2]
+[gd_scene load_steps=10 format=2]
 
 [ext_resource path="res://Scripts/level.gd" type="Script" id=1]
 [ext_resource path="res://Sprites/General/blueDot.png" type="Texture" id=2]
@@ -6,6 +6,7 @@
 [ext_resource path="res://Sprites/tiles/basic/new border grey tile.png" type="Texture" id=4]
 [ext_resource path="res://Sprites/overlays/diagnol overlay.png" type="Texture" id=5]
 [ext_resource path="res://Sprites/UI/Untitled_Artwork 2.png" type="Texture" id=6]
+[ext_resource path="res://Sprites/UI/Untitled_Artwork.jpg" type="Texture" id=7]
 
 [sub_resource type="DynamicFontData" id=1]
 font_path = "res://fonts/font4.ttf"
@@ -53,10 +54,16 @@ position = Vector2( 1100, -100 )
 z_index = 15
 
 [node name="background" type="Sprite" parent="text_overlay"]
-modulate = Color( 0, 0, 0, 0.862745 )
+modulate = Color( 0, 0, 0, 1 )
 position = Vector2( -75.8641, 6.53815 )
-scale = Vector2( 9.83214, 1.439 )
-texture = ExtResource( 4 )
+scale = Vector2( 2.27, 0.72 )
+texture = ExtResource( 7 )
+
+[node name="background2" type="Sprite" parent="text_overlay"]
+modulate = Color( 0.0980392, 0.0980392, 0.0980392, 1 )
+position = Vector2( -75.8641, 6.53815 )
+scale = Vector2( 2.25, 0.7 )
+texture = ExtResource( 7 )
 
 [node name="seperator left" type="Sprite" parent="text_overlay"]
 modulate = Color( 0, 0, 0, 0.588235 )

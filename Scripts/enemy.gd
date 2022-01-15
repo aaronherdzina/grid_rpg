@@ -12,8 +12,8 @@ var char_name = "Enemy"
 var chasing_player = false
 var atk_tile_pattern_name = "fill" # this should match to a conditional check in meta.get_adjacent_tiles_in_distance()
 var current_battle_move_distance = round(rand_range(2, 7))
-var health = 4
-var starting_turn_health = 4
+var health = 5
+var starting_turn_health = 30
 var current_battle_attack = 1
 var current_battle_damage = 3
 var current_battle_defense = 0
@@ -57,6 +57,7 @@ var atk_anim_delay = .6
 var between_atk_delay = 1
 var player = null
 
+var facing_dir = "fl_"
 var can_atk = true
 var current_pt_dmg = 0
 var current_pt_range = 0
@@ -225,7 +226,14 @@ func reset_can_atk():
 	can_atk = true
 
 
-func remove_enemy(vol_range=0):
+func validate_enm_for_turn():
+	if health <= 0:
+		if alive or visible:
+			defeat_enemy()
+
+
+func defeat_enemy():
+	# remove from play but don't free the instance
 	var l = get_node("/root/level")
 	alive = false
 	if current_tile:
@@ -233,6 +241,12 @@ func remove_enemy(vol_range=0):
 		current_tile.enm_on_tile = false
 		current_tile = null
 	visible = false
+	should_remove = true
+
+
+func remove_enemy(vol_range=0):
+	if alive:
+		alive = false
 	queue_free()
 
 
@@ -322,7 +336,7 @@ func set_passthrough_tile_based_details(t):
 
 func set_next_current_tile(tile):
 	if path[0] != current_tile and tile != current_tile: # ensure we don't count starting tile
-		meta.check_if_in_op_atk_range(self)
+		# meta.check_if_in_op_atk_range(self)
 		current_move_distance -= 1
 		current_tile = tile
 		position = current_tile.global_position
@@ -330,19 +344,21 @@ func set_next_current_tile(tile):
 		if not player.stealth:
 			chasing_player = is_player_in_vision_range()
 		meta.check_if_in_pt_atk_range(self)
+	path.remove(0)
+	if len(path) > 0:
+		$AnimationPlayer.play("wireframe_" + meta.set_char_anims(self, "move", current_tile, path[0]))
 
 
 func handle_movement_animations(delta):
 	if alive and not meta.player_turn and start_movement:
 		var should_stop_path = false
 		if len(path) > 0:
-			meta.check_if_in_op_atk_range(self)
+			# meta.check_if_in_op_atk_range(self)
 			var d = self.global_position.distance_to(path[0].global_position)
 			if d > 4:
 				position = self.global_position.linear_interpolate(path[0].global_position, (speed * delta)/d)
 			else:
 				set_next_current_tile(path[0])
-				path.remove(0)
 				if len(path) > 0:
 					for enm in get_tree().get_nodes_in_group("enemies"):
 						if enm != self and enm.current_tile and enm.current_tile.index == path[0].index:

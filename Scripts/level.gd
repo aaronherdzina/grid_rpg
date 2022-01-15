@@ -39,10 +39,10 @@ var bottom_tiles = []
 var left_tiles = []
 var right_tiles = []
 var round_turns = []
-var tile_gap = 130
-var far_tile_gap_setting = 145
+var tile_gap = 125
+var far_tile_gap_setting = 130
 var far_gap_tile_outline_size = 1.012
-var close_tile_gap_setting = 135
+var close_tile_gap_setting = 125
 var close_gap_tile_outline_size = 1.01
 var enms = 5
 var level_astar = null
@@ -570,6 +570,24 @@ func spawn_player(new_player=true):
 		var p = get_node("/root/player")
 		p.reset_player()
 		meta.current_character_turn = p
+	handle_level_start_camera_change_display()
+	
+
+func handle_level_start_camera_change_display():
+	var p = get_node("/root/player")
+	main.handle_in_battle_input("scroll_forward")
+	for i in range(4):
+		var timer = Timer.new()
+		timer.set_wait_time((3.4-i)*.03)
+		timer.set_one_shot(true)
+		get_node("/root").add_child(timer)
+		timer.start()
+		yield(timer, "timeout")
+		timer.queue_free()
+		main.handle_in_battle_input("scroll_back")
+	if main.checkIfNodeDeleted(p) == false and p.current_tile:
+		p.current_tile.hover()
+		p.current_tile.exit_hover()
 
 
 func get_spawn_tile():
@@ -726,7 +744,14 @@ func process_enemy_turns():
 			print('starting turn for ' + str(round_turns[0].id))
 			var turn_time_limit = 12
 			if not round_turns[0].processing_turn:
-				round_turns[0].start_turn()
+				round_turns[0].validate_enm_for_turn()
+				if round_turns[0].should_remove:
+					print("should remove")
+					round_turns[0].remove_enemy()
+					round_turns.remove(0)
+					continue
+				else:
+					round_turns[0].start_turn()
 			var player = get_node("/root/player")
 			while round_turns[0] and round_turns[0].processing_turn:
 				change_turn_display_name(round_turns[0])
@@ -758,10 +783,25 @@ func process_enemy_turns():
 		end_turn()
 
 
+func check_should_end_level():
+	var level_objective = "destroy"
+	if level_objective == "destroy":
+		var enms_left = 0
+		for enm in get_tree().get_nodes_in_group("enemies"):
+			if main.checkIfNodeDeleted(enm) == false and enm.alive:
+				enms_left += 1
+		if enms_left <= 0:
+			meta.spawn_new_level()
+			return true
+	return false
+
+
 func end_turn():
 	if processing_turns:
 		return
 	if not get_node("/root").has_node("player"):
+		return
+	if check_should_end_level():
 		return
 	var p = get_node("/root/player")
 	p.stealth = is_player_stealth()
