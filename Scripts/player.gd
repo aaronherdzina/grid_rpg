@@ -2,6 +2,7 @@ extends Node2D
 
 const FOLLOW_SPEED = 600
 
+
 var speed = rand_range(300, 500)
 var char_name = "Player"
 var path = []
@@ -12,8 +13,8 @@ var chosen_tile = null
 var turn_start_tile = null
 var previous_tile = null
 var moving = false
-var current_battle_move_distance = 5
-var current_move_distance = 5
+var current_battle_move_distance = 8
+var current_move_distance = 8
 var health = 15
 var starting_turn_health = 50
 var processing_turn = false
@@ -26,7 +27,7 @@ var cam_vel = Vector2(0, 0)
 var noise = 2
 var cam_free_move = false
 var current_battle_attack = 2
-var current_battle_atk_range = 3
+var current_battle_atk_range = 1
 var current_battle_damage = 1
 var stealth_noise_val = 1
 var stealth_dmg_bonus = 1
@@ -37,11 +38,11 @@ var energy = 3
 var cam_node_pos = self.position
 var selected_attack = meta.standard_atk_type
 var default_energy = 3
-var default_atk_range = 3
+var default_atk_range = 1
 var default_attack = 2
 var default_damage = 2
 var default_defense = 0
-var default_distance = 3
+var default_distance = 8
 var current_opportunity_attacks = 2
 var current_battle_opportunity_attacks = 1
 var battle_opportunity_attacks = 1
@@ -55,7 +56,7 @@ var mouse_follow_pos = Vector2(0, 0)
 var current_attack = 2
 var current_damage = 2
 var current_defense = 0
-var current_atk_range = 3
+var current_atk_range = 1
 
 var facing_dir = "br_"
 var char_power = 10 # throw strength & distance, item cary max, wrestle, melee dmg bonus
@@ -66,6 +67,15 @@ var char_weaponry = 7 # atks, atk range sometimes, dmg
 var can_atk = true
 var current_pt_dmg = 0
 var current_pt_range = 0
+
+var passengers = []
+var passenger_atk_bonus = 0
+var passenger_atk_range_bonus = 0
+var passenger_dmg_bonus = 0
+var passenger_move_bonus = 0
+var passenger_health_bonus = 0
+var passenger_defense_bonus = 0
+
 # when energy runs out buff are removed and we set to our default stats
 func reset_energy_based_stats():
 	current_attack = default_attack
@@ -109,7 +119,16 @@ func attack(target, should_move=true, attack_name="standard"):
 		chosen_tile = target.current_tile
 		move()
 		return
-	
+	 
+	#target, self, meta.player_stats, target.stat)
+	#classes.melee_skill_1_push(target, self, meta.player_stats, target.stats)
+	classes.wrestler_skill_1_throw(target, self, meta.player_stats, target.stats)
+	#classes.wrestler_skill_2_swap(target, self, meta.player_stats, target.stats)
+	var timer = main.make_timer(.5)
+	timer.start()
+	yield(timer, "timeout")
+	timer.queue_free()
+	can_atk = true
 	var did_atk_hit = meta.attack(self, target, true, attack_name)
 	if did_atk_hit:
 		if target.alive:
@@ -158,10 +177,12 @@ func reset_player():
 
 func set_spawn_tile(target_node):
 	position = target_node.global_position
+	target_node.picked_for_spawn = true
 	current_tile = target_node
 	chosen_tile = target_node
 	turn_start_tile = target_node
 	target_pos = target_node.global_position
+	current_tile.map_tile_type(meta.GRASS_TYPE)
 
 
 func set_navigation():
@@ -179,7 +200,7 @@ func set_navigation():
 		if l.level_astar.get_point_weight_scale(p) >= meta.max_weight:
 			return
 		for t in l.level_tiles:
-			if p == t.index and t.can_move:
+			if p == t.index and t.can_move and not t.tile_has_enm():
 				path.append(t)
 				debug_idx_path.append(t.index)
 				break
@@ -221,11 +242,9 @@ func reset_can_atk():
 
 func start_turn():
 	# start turn
-	$cam_body/cam.position = Vector2(0, 0)
-	$cam_body/cam.current = true
-	$cam_body/cam.visible = true
 	if energy <= 0:
 		reset_energy_based_stats()
+	meta.reset_char_sprite_pos($Sprite)
 	meta.set_new_turn_stats(self)
 	meta.set_end_and_start_turn_tile_based_details(self, current_tile)
 	var l = get_node("/root/level")
@@ -234,9 +253,13 @@ func start_turn():
 	current_tile.player_on_tile = false
 	turn_start_tile = current_tile
 	handle_start_and_reset_vars()
+	$cam_body.position = Vector2(0, 0)
+	$cam_body/cam.current = true
+	$cam_body/cam.visible = true
 
 
 func stop_turn():
+	meta.reset_char_sprite_pos($Sprite)
 	meta.reset_graphics_and_overlays()
 	var l = get_node("/root/level")
 	l.level_astar.set_point_weight_scale(current_tile.index, meta.occupied_tile_weight)
@@ -297,6 +320,52 @@ func clamp_vector(vector, clamp_origin, clamp_length):
 
 func set_passthrough_tile_based_details(t):
 	meta.set_passthrough_tile_based_details(self, t)
+
+
+func update_passenger_bonuses(new_passenger=false):
+	if new_passenger:
+		for passenger in passengers:
+			if new_passenger["type_name"] == passenger["type_name"]:
+				passenger["amount"] += 1
+				break
+	# REMOVE THE BELOW STUFF (KEEP THE RETURN) MAKE A DIFF FUNC, PAASSENGER META?..
+	# THAT IS CALLED WHEN SOMEONE LANDS ON THE TILE AND THEY CHOOSE TO "COLLECT" THE PASSENGER
+	# SO THIS SHOULD INSTEAD UPDATE PLAYER VARs 
+	# use passenger_details to se tile specifics and return to use those details 
+	for passenger in passengers:
+		for bonus_dict in passenger["bonuses"]:
+			var bonus_val = bonus_dict["bonus_val"]
+			var penalty_val = bonus_dict["penalty_val"]
+	
+			if bonus_dict["bonus_name"] == "atk":
+				passenger_atk_bonus = bonus_val * passenger["amount"]
+			elif bonus_dict["penalty_name"] == "atk":
+				passenger_atk_bonus -= penalty_val
+	
+			elif bonus_dict["bonus_name"] == "atk_range":
+				passenger_atk_range_bonus += bonus_val
+			elif bonus_dict["penalty_name"] == "atk_range":
+				passenger_atk_range_bonus -= penalty_val
+	
+			elif bonus_dict["bonus_name"] == "dmg":
+				passenger_dmg_bonus += bonus_val
+			elif bonus_dict["penalty_name"] == "dmg":
+				passenger_dmg_bonus -= penalty_val
+	
+			elif bonus_dict["bonus_name"] == "move":
+				passenger_move_bonus += bonus_val
+			elif bonus_dict["penalty_name"] == "move":
+				passenger_move_bonus -= penalty_val
+	
+			elif bonus_dict["bonus_name"] == "health":
+				passenger_health_bonus += bonus_val
+			elif bonus_dict["penalty_name"] == "health":
+				passenger_health_bonus -= penalty_val
+			
+			elif bonus_dict["bonus_name"] == "defense":
+				passenger_defense_bonus += bonus_val
+			elif bonus_dict["penalty_name"] == "defense":
+				passenger_defense_bonus -= penalty_val
 
 
 func set_next_current_tile(tile):
@@ -387,3 +456,10 @@ func _on_right_btn_mouse_exited():
 
 func _on_bottom_btn_mouse_exited():
 	move_cam("stop")
+
+
+func _on_AnimationPlayer_animation_finished(anim_name):
+	if "knockback" in anim_name:
+		print("facing is " + str(facing_dir) + "stand_up")
+		$AnimationPlayer.play(str(facing_dir) + "stand_up")
+	meta.reset_char_sprite_pos($Sprite)

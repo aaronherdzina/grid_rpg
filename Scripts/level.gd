@@ -1,8 +1,8 @@
 extends Node2D
 
 var wall_spawn_chance = 9
-var text_x_buffer = 0
-var text_y_buffer = 400
+var text_x_buffer = -1000
+var text_y_buffer = 70
 var test_lvl = {
 	"cols": 6,
 	"rows": 8,
@@ -18,14 +18,20 @@ var test_lvl = {
 var random_lvl = {
 	"cols": 0,
 	"rows": 0,
-	
+	"turns": 10,
 	"tile_list": []
 	}
 
+var random_turns = 4
+var current_turn = 0
+var lvl_turns = 10
 var max_lvl_cols = 18
 var min_lvl_cols = 5
 
-var max_lvl_rows = 22
+var min_lvl_turns = 3
+var max_lvl_turns = 5
+
+var max_lvl_rows = 27
 var min_lvl_rows = 7
 # debug for pathfinding tests
 
@@ -39,7 +45,7 @@ var bottom_tiles = []
 var left_tiles = []
 var right_tiles = []
 var round_turns = []
-var tile_gap = 125
+var tile_gap = 110
 var far_tile_gap_setting = 130
 var far_gap_tile_outline_size = 1.012
 var close_tile_gap_setting = 125
@@ -255,7 +261,8 @@ func spawn_premade_tiles(lvl_obj, overwrite_details=true, preset_course=false):
 			timer.start()
 			yield(timer, "timeout")
 			timer.queue_free()
-				
+
+	
 
 	var timer = Timer.new()
 	timer.set_wait_time((len(level_tiles)*.02) * spawn_types_display_speed)
@@ -294,61 +301,57 @@ func spawn_premade_tiles(lvl_obj, overwrite_details=true, preset_course=false):
 	#timer15.start()
 	#yield(timer15, "timeout")
 	#timer15.queue_free()
-	reset_level_vals()
+
 	for t in level_tiles:
-		if t.spawn_enemies:
-			spawn_enemies(level_astar,  t, t)
-			var tmr = Timer.new()
-			tmr.set_wait_time(spawn_types_display_speed)
-			tmr.set_one_shot(true)
-			get_node("/root").add_child(tmr)
-			tmr.start()
-			yield(tmr, "timeout")
-			tmr.queue_free()
+		t.set_tile_neighbor_nodes(level_tiles)
+	reset_level_vals()
 	spawn_player()
+	meta.spawn_enemies()
 
 
 func reset_level_vals():
-	meta.remove_enemies()
 	meta.can_spawn_level = true
 	main.current_screen = 'battle'
 
 
 func randomize_level(lvl_obj):
 	randomize()
+	random_turns = floor(rand_range(min_lvl_turns, max_lvl_turns))
+	var min_tiles_needed = 20
 	lvl_obj["tiles_list"] = []
-	lvl_obj["cols"] = floor(rand_range(min_lvl_cols, max_lvl_cols))
-	lvl_obj["rows"] = floor(rand_range(min_lvl_rows, max_lvl_rows))
-	var tile_count  = lvl_obj["cols"] * lvl_obj["rows"]
-	var enms = 2 + round(tile_count * .01)
-	var player_spawned = false
+	var map_size_mod = .5
+	var max_col = min_tiles_needed+(max_lvl_cols * map_size_mod)
+	var max_row = min_tiles_needed+(max_lvl_rows * map_size_mod)
+	lvl_obj["cols"] =  floor(rand_range(min_tiles_needed, max_col))
+	lvl_obj["rows"] = floor(rand_range(min_tiles_needed, max_row))
+	lvl_obj["turns"] = random_turns
+	var tile_count = lvl_obj["cols"] * lvl_obj["rows"]
+	var player_spawn_set = false
+	enms = 2 + round(tile_count * .01)
 	map_tiles(lvl_obj)
-	#
-	for t in level_tiles:
-			if t.row <= lvl_obj["rows"] and t.col <= lvl_obj["cols"] and\
-			   t.row >= 0 and t.col >= 0:
-				if not "Player Spawn" in t.tags:
-						if rand_range(0, 1) >= .88:
-							t.map_tile_type("water")
-						elif rand_range(0, 1) >= .97 and enms > 0:
-							enms -= 1
-							t.map_tile_type("enemy spawn")
-						elif rand_range(0, 1) >= .87:
-							t.map_tile_type("forest path")
-						else:
-							t.map_tile_type("move")
-	
-	for t in level_tiles:
-		if t.row > 0 and t.col > 0 and not player_spawned and t.row <= lvl_obj["rows"] and t.col <= lvl_obj["cols"] and\
-		   t.row >= 0 and t.col >= 0 and not "Enemy Spawn" in t.tags and rand_range(0, 1) >= .95:
-				t.map_tile_type("player spawn")
-				player_spawned = true
-		if player_spawned:
-			break
-	#
+	var tile_type_set = [meta.DIRT_TYPE, meta.DIRT_TYPE,\
+						meta.WATER_TYPE, meta.WATER_TYPE, meta.WATER_TYPE,
+						meta.EMPTY_TYPE, 
+						meta.GRASS_TYPE,meta.GRASS_TYPE, meta.GRASS_TYPE, meta.GRASS_TYPE, meta.GRASS_TYPE]
 
-	#set_borders(lvl_obj)
-	reset_level_vals()
+	for t in level_tiles:
+		var random_tile_type = tile_type_set[rand_range(0, len(tile_type_set))]
+		if t.row <= lvl_obj["rows"] and t.col <= lvl_obj["cols"] and\
+			t.row > 0 and t.col > 0:
+			t.current = true
+			t.map_tile_type(random_tile_type)
+			if rand_range(0, 1) >= .95:
+				t.spawn_enemies = true
+			elif rand_range(0, 1) >= .95 and not player_spawn_set:
+				player_spawn_set = true
+				t.spawn_player = true
+		else:
+			t.map_tile_type(meta.EMPTY_TYPE)
+			t.current = false
+
+	for t in level_tiles:
+		t.map_tile_type_by_neighbors(false, false, false, true)
+
 	var timer14 = Timer.new()
 	timer14.set_wait_time((len(level_tiles)*.01) * spawn_types_display_speed)
 	timer14.set_one_shot(true)
@@ -356,19 +359,13 @@ func randomize_level(lvl_obj):
 	timer14.start()
 	yield(timer14, "timeout")
 	timer14.queue_free()
-	
+
 	reset_level_vals()
-	for t in level_tiles:
-		if t.spawn_enemies:
-			spawn_enemies(level_astar,  t, t)
-			var tmr = Timer.new()
-			tmr.set_wait_time(spawn_types_display_speed)
-			tmr.set_one_shot(true)
-			get_node("/root").add_child(tmr)
-			tmr.start()
-			yield(tmr, "timeout")
-			tmr.queue_free()
 	spawn_player()
+	
+			
+	for t in level_tiles:
+		meta.helpers_set_edge_tiles(t)
 
 
 func set_random_level(lvl_obj):
@@ -406,8 +403,7 @@ func set_random_level(lvl_obj):
 	if left_over_tiles > 0:
 		for i in range(0, left_over_tiles):
 			tile_types.append("move")
-	
-	
+
 	# TODO FIX PLAYER SPAWN
 	for i in range(0, tile_count):
 		if not player_spawned:
@@ -543,26 +539,18 @@ func spawn_player(new_player=true):
 		meta.current_characters.append(p)
 		meta.current_character_turn = p
 		var spawn_tile = level_tiles[0]
-		print("lking for p spawn")
+		
 		for t in level_tiles:
 			if t.spawn_player:
-				print("here???" + str(t.spawn_player) + str(t))
 				spawn_tile = t
 				break
-		"""
-		var idx = len(level_tiles) - 1
-		var prefered_index = 0
-		for i in level_tiles:
-			if idx < len(level_tiles) and idx >= 0:
-				if not "wall" in level_tiles[idx].tags
-				   and not "water" in level_tiles[idx].tags
-				   and not "enemy spawn" in level_tiles[idx].tags:
-					for n in level_tiles[idx].neighbors:
-						if not "enemy spawn" in n.tags:
-							prefered_index = idx
-			idx -= 1
-		var spawn_tile = level_tiles[prefered_index]
-		"""
+		
+		if spawn_tile == level_tiles[0]:
+			for t in level_tiles:
+				if t.row != 0 and t.col != 0:
+					spawn_tile = t
+					break
+		
 		
 		p.set_spawn_tile(spawn_tile)
 		change_turn_display_name(p)
@@ -623,23 +611,6 @@ func spawn_player_old():
 
 	p.set_spawn_tile(spawn_tile)
 	change_turn_display_name(p)
-
-
-func spawn_enemies(astar_path_obj, enm_starting_tile, target_tile):
-	var e = main.ENEMY.instance()
-	get_node("/root").add_child(e)
-	e.set_spawn_tile(enm_starting_tile)
-	e.set_tile_target(target_tile)
-	e.add_to_group("enemies")
-	e.char_name = meta.char_names[rand_range(0, len(meta.char_names) - 1)]
-	#print('spawned: ' + e.char_name)
-	e.id = current_enm_count
-	if main.debug:
-		e.get_node("Sprite/debug_info").visible = true
-		e.get_node("Sprite/debug_info").set_text(str(e.id))
-	else:
-		e.get_node("Sprite/debug_info").visible = false
-	current_enm_count += 1
 
 
 func set_tile_neighbors(row, col):
@@ -714,33 +685,31 @@ func connect_astart_path_neightbors(astar_path_obj, tile_index, tile, row, col, 
 
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
-func _process(delta):
-	if not get_node("/root").has_node("player"):
-		return
-	var player = get_node("/root/player") # TODO define elsewhere
+func _process(_delta):
 	if len(round_turns) > 0 and main.checkIfNodeDeleted(round_turns) == false:
 		change_turn_display_name(round_turns[0])
+		
 
 
 func attach_text_overlay(follow_node, global=false):
 	if not global:
-		if $text_overlay.position.x != follow_node.position.x + text_x_buffer:
-			$text_overlay.position.x = follow_node.position.x + text_x_buffer
+		if $text_overlay/text_overlay_node.position.x != follow_node.position.x + text_x_buffer:
+			$text_overlay/text_overlay_node.position.x = follow_node.position.x + text_x_buffer
 			
-		if $text_overlay.position.y != follow_node.position.y + text_y_buffer:
-			$text_overlay.position.y = follow_node.position.y + text_y_buffer
+		if $text_overlay/text_overlay_node.position.y != follow_node.position.y + text_y_buffer:
+			$text_overlay/text_overlay_node.position.y = follow_node.position.y + text_y_buffer
 	else:
-		if $text_overlay.position.x != follow_node.global_position.x + text_x_buffer:
-			$text_overlay.position.x = follow_node.global_position.x + text_x_buffer
+		if $text_overlay/text_overlay_node.position.x != follow_node.global_position.x + text_x_buffer:
+			$text_overlay/text_overlay_node.position.x = follow_node.global_position.x + text_x_buffer
 			
-		if $text_overlay.position.y != follow_node.global_position.y + text_y_buffer:
-			$text_overlay.position.y = follow_node.global_position.y + text_y_buffer
+		if $text_overlay/text_overlay_node.position.y != follow_node.global_position.y + text_y_buffer:
+			$text_overlay/text_overlay_node.position.y = follow_node.global_position.y + text_y_buffer
 
 
 func process_enemy_turns():
 	if not processing_turns:
 		processing_turns = true
-		while len(round_turns) > 0:
+		while len(round_turns) > 0 and main.checkIfNodeDeleted(round_turns[0]) == false:
 			print('starting turn for ' + str(round_turns[0].id))
 			var turn_time_limit = 12
 			if not round_turns[0].processing_turn:
@@ -753,12 +722,8 @@ func process_enemy_turns():
 				else:
 					round_turns[0].start_turn()
 			var player = get_node("/root/player")
-			while round_turns[0] and round_turns[0].processing_turn:
+			while round_turns[0] and main.checkIfNodeDeleted(round_turns[0]) == false and round_turns[0].processing_turn:
 				change_turn_display_name(round_turns[0])
-				if player and main.checkIfNodeDeleted(player) == false:
-					pass
-					#player.move_cam(round_turns[0])
-					#draw_line (player.global_position, round_turns[0].global_position, Color(1, .4, .4, .4), .5, true)
 				var timer = Timer.new()
 				timer.set_wait_time(1)
 				timer.set_one_shot(true)
@@ -774,11 +739,13 @@ func process_enemy_turns():
 					if turn_time_limit <= -round(turn_time_limit * .50):
 						break
 			print('turn over')
-			if round_turns[0].should_remove:
-				print("should remove")
-				round_turns[0].remove_enemy()
-			round_turns.remove(0)
-		change_turn_display_name(get_node("/root/player"))
+			if main.checkIfNodeDeleted(round_turns[0]) == false:
+				if round_turns[0].should_remove:
+					print("should remove")
+					round_turns[0].remove_enemy()
+				round_turns.remove(0)
+		if get_node("/root").has_node("player"):
+			change_turn_display_name(get_node("/root/player"))
 		processing_turns = false
 		end_turn()
 
@@ -790,7 +757,7 @@ func check_should_end_level():
 		for enm in get_tree().get_nodes_in_group("enemies"):
 			if main.checkIfNodeDeleted(enm) == false and enm.alive:
 				enms_left += 1
-		if enms_left <= 0:
+		if enms_left <= 0 or current_turn >= random_turns:
 			meta.spawn_new_level()
 			return true
 	return false
@@ -815,14 +782,16 @@ func end_turn():
 		round_turns = []
 		for enm in get_tree().get_nodes_in_group("enemies"):
 			if main.checkIfNodeDeleted(enm) == false and enm.alive:
+				enm.current_tile.set_popout_details()
 				round_turns.append(enm)
 		process_enemy_turns()
 	else:
 		p.get_node("cam_body/cam/overlays and underlays/stealth_overlay").visible = p.stealth
 		p.get_node("cam_body/cam/overlays and underlays/chased_overlay").visible = not p.stealth
-		
+
 		if p.stealth:
 			print('here? stealth')
+		current_turn += 1
 		meta.player_turn = true
 		p.start_turn()
 		change_turn_display_name(p)
@@ -852,11 +821,12 @@ func change_static_battle_ui(action):
 
 
 func change_turn_display_name(character):
-	var all_stats = meta.get_character_display_text(character)
-	var character_stats = all_stats[0]
-	var additional_details = all_stats[1]
-	$text_overlay/character_stats.set_text(character_stats)
-	$text_overlay/additional_details.set_text(additional_details)
+	meta.get_character_display_text(character)
+	$text_overlay/text_overlay_node/level_text.set_text("Turn " + str(current_turn) + "  /  " + str(random_turns))
+	#var character_stats = all_stats[0]
+	#var additional_details = all_stats[1]
+	#$text_overlay/character_stats.set_text(character_stats)
+	#$text_overlay/additional_details.set_text(additional_details)
 
 
 func _on_end_turn_button_pressed():

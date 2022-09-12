@@ -1,5 +1,5 @@
 extends Node2D
-var speed = rand_range(200, 300)
+var speed = rand_range(350, 475)
 var path = []
 var start_movement = false
 var target_pos = Vector2()
@@ -13,7 +13,7 @@ var chasing_player = false
 var atk_tile_pattern_name = "fill" # this should match to a conditional check in meta.get_adjacent_tiles_in_distance()
 var current_battle_move_distance = round(rand_range(2, 7))
 var health = 5
-var starting_turn_health = 30
+var starting_turn_health = 5
 var current_battle_attack = 1
 var current_battle_damage = 3
 var current_battle_defense = 0
@@ -32,6 +32,20 @@ var battle_attack_debuff = 0
 var battle_damage_debuff = 0
 var battle_defense_debuff = 0
 var battle_move_debuff = 0
+
+
+var passengers = 0
+var passenger_limit = 20
+var type_1_passengers = 0
+var type_2_passengers = 0
+var type_3_passengers = 0
+var type_4_passengers = 0
+var type_5_passengers = 0
+var type_6_passengers = 0
+var type_7_passengers = 0
+var type_8_passengers = 0
+
+
 var control_cam = false
 var alive = true
 
@@ -62,6 +76,14 @@ var can_atk = true
 var current_pt_dmg = 0
 var current_pt_range = 0
 
+
+var stats = {
+	classes.STRENGTH_STAT: 1,
+	classes.SPEED_STAT: 1,
+	classes.REASON_STAT: 1
+}
+
+
 func set_default_stats():
 	if energy < 1:
 		energy = 1
@@ -82,6 +104,10 @@ func set_default_stats():
 
 
 func _ready():
+	pass
+
+
+func spawn(spawn_tile):
 	randomize()
 	should_remove = false
 	current_atk_range = round(rand_range(.6, 1.7))
@@ -89,7 +115,26 @@ func _ready():
 	current_damage = round(rand_range(1, 3))
 	current_atk_range = round(rand_range(.6, 1.7))
 	current_battle_move_distance = round(rand_range(2, 7))
+	spawn_tile.map_tile_type(meta.SPAWN_ENEMY_TYPE)
+	spawn_tile.enm_on_tile = true
+	alive = true
+	visible = true
+	target_tile = spawn_tile
+	spawn_tile.current = true
+	set_spawn_tile(spawn_tile)
+	set_tile_target(spawn_tile)
+	add_to_group("enemies")
 	set_process(true)
+
+
+func show_card():
+	$card.visible = true
+	current_tile.z_index = z_index + current_tile.base_index + 1
+
+
+func hide_card():
+	$card.visible = false
+	current_tile.z_index = current_tile.base_index
 
 
 func set_tile_target(target_node):
@@ -104,8 +149,9 @@ func set_tile_target(target_node):
 
 
 func set_spawn_tile(target_node):
-	position = target_node.global_position
 	current_tile = target_node
+	position = target_node.global_position
+	current_tile.set_popout_details()
 
 
 func check_if_player_attackable():
@@ -153,6 +199,7 @@ func set_navigation():
 
 func start_turn():
 	# start turn
+	meta.reset_char_sprite_pos($Sprite)
 	player = get_node("/root/player")
 	processing_turn = true
 	$cam_body/cam.zoom = player.get_node("cam_body/cam").zoom
@@ -167,6 +214,7 @@ func start_turn():
 	meta.set_end_and_start_turn_tile_based_details(self, current_tile)
 	$cam_body/cam.position = Vector2(0, 0)
 	$cam_body/cam.current = true
+	$card.visible = false
 
 	var timer = main.make_timer(.2)
 	timer.start()
@@ -175,7 +223,11 @@ func start_turn():
 	var l = get_node("/root/level")
 	var default_weight =  meta.unccupied_tile_weight if current_tile.can_move else meta.wall_tile_weight
 	l.level_astar.set_point_weight_scale(current_tile.index, default_weight)
-	chasing_player = is_player_in_vision_range()
+	var tiles_in_view = meta.get_adjacent_tiles_in_distance(current_tile, view_range)
+	for tile_in_view in tiles_in_view:
+		if tile_in_view.index == player.current_tile.index:
+			chasing_player = true
+			break
 	# process turn
 	# consider delay to move animations
 	handle_overheard_text("", false)
@@ -183,6 +235,8 @@ func start_turn():
 		for atks in current_attack:
 			handle_overheard_text("Attacking...", true)
 			enm_specific_attack_details()
+			
+	
 			var t = main.make_timer(atk_anim_delay)
 			t.start()
 			yield(t, "timeout")
@@ -195,6 +249,9 @@ func start_turn():
 			timer1.start()
 			yield(timer1, "timeout")
 			timer1.queue_free()
+		var skills = ["melee_skill_1_push", "wrestler_skill_1_throw", "wrestler_skill_2_swap"]
+		var skill = skills[rand_range(0, len(skills))]
+		classes.call(skill, player, self, stats, meta.player_stats)
 		stop_turn("start_turn")
 	else:
 		move()
@@ -205,8 +262,9 @@ func start_turn():
 
 func handle_overheard_text(new_text, is_on=true):
 	var final_text = ""
+	var player_name = get_node("/root/player").char_name
 	if chasing_player:
-		final_text = "TRACKING\n" + new_text
+		final_text = "TRACKING " + str(player_name) + "\n" + new_text
 	else:
 		final_text = new_text
 	$Sprite2.visible = is_on
@@ -233,25 +291,32 @@ func validate_enm_for_turn():
 
 
 func defeat_enemy():
+	print("remove enm from defeat_enemy")
 	# remove from play but don't free the instance
 	var l = get_node("/root/level")
 	alive = false
+	$card.modulate = Color(0, 0, 0, 0)
 	if current_tile:
 		l.level_astar.set_point_weight_scale(current_tile.index, meta.unccupied_tile_weight)
 		current_tile.enm_on_tile = false
 		current_tile = null
-	visible = false
 	should_remove = true
+	
+	$AnimationPlayer.stop()
+	$AnimationPlayer.play(facing_dir + "knockback")
 
 
 func remove_enemy(vol_range=0):
+	print("remove enm?")
 	if alive:
 		alive = false
+	visible = false
 	queue_free()
 
 
 func stop_turn(stop_callee):
 	# astar set point of current tile to
+	meta.reset_char_sprite_pos($Sprite)
 	print("stopping turn in " + str(self.name) + " from func " + str(stop_callee))
 	var l = get_node("/root/level")
 	l.level_astar.set_point_weight_scale(current_tile.index, meta.occupied_tile_weight)
@@ -260,8 +325,11 @@ func stop_turn(stop_callee):
 	tiles_in_view = meta.get_adjacent_tiles_in_distance(current_tile, view_range, view_type)
 
 	var nearby_tile = meta.get_closest_adjacent_tile(self, current_tile, (not chasing_player), false)
-	
-	chasing_player = is_player_in_vision_range()
+	var tiles_in_view = meta.get_adjacent_tiles_in_distance(current_tile, view_range)
+	for tile_in_view in tiles_in_view:
+		if tile_in_view.index == player.current_tile.index:
+			chasing_player = true
+			break
 	handle_overheard_text("", false)
 	var timer1 = Timer.new()
 	timer1.set_wait_time(.5)
@@ -285,7 +353,7 @@ func stop_turn(stop_callee):
 
 
 func is_player_in_vision_range():
-	#var player = get_node("/root/player")
+	var player = get_node("/root/player")
 	for n in current_tile.neighbors:
 		if not player.invisible:
 			if n.index == player.current_tile.index:
@@ -302,12 +370,16 @@ func is_player_in_vision_range():
 		if chasing_player:
 			break
 
-	return chasing_player
+	return [chasing_player]
 
 func move():
 	#var player = get_node("/root/player")
 	var nearby_tile = meta.get_closest_adjacent_tile(self, current_tile, (not chasing_player), false)
-	chasing_player = is_player_in_vision_range()
+	var tiles_in_view = meta.get_adjacent_tiles_in_distance(current_tile, view_range)
+	for tile_in_view in tiles_in_view:
+		if tile_in_view.index == player.current_tile.index:
+			chasing_player = true
+			break
 
 	if chasing_player:
 		handle_overheard_text("", true)
@@ -342,12 +414,21 @@ func set_next_current_tile(tile):
 		position = current_tile.global_position
 		set_passthrough_tile_based_details(tile)
 		if not player.stealth:
-			chasing_player = is_player_in_vision_range()
+			var tiles_in_view = meta.get_adjacent_tiles_in_distance(current_tile, view_range)
+			for tile_in_view in tiles_in_view:
+				if tile_in_view.index == player.current_tile.index:
+					chasing_player = true
 		meta.check_if_in_pt_atk_range(self)
+	path[0].enm_on_tile = false
 	path.remove(0)
 	if len(path) > 0:
 		$AnimationPlayer.play("wireframe_" + meta.set_char_anims(self, "move", current_tile, path[0]))
-
+		if current_tile:
+			current_tile.enm_on_tile = true
+			var enm_v_tiles = meta.get_adjacent_tiles_in_distance(current_tile, view_range)
+			for enm_v_t in enm_v_tiles:
+				enm_v_t.modulate = Color(1, .5, .5, 1)
+			current_tile.set_popout_details()
 
 func handle_movement_animations(delta):
 	if alive and not meta.player_turn and start_movement:
@@ -411,6 +492,12 @@ func _process(delta):
 		var lvl = get_node("/root/level")
 		lvl.attach_text_overlay($cam_body/cam, true)
 		#lvl.get_node("text_overlay").position = Vector2(self.global_position.x + lvl.text_x_buffer, self.global_position.y + lvl.text_y_buffer)
-	
 	if processing_turn:
 		handle_movement_animations(delta)
+
+
+func _on_AnimationPlayer_animation_finished(anim_name):
+	if "knockback" in anim_name and alive:
+		print("facing is " + str(facing_dir) + "stand_up")
+		$AnimationPlayer.play(str(facing_dir) + "stand_up")
+	meta.reset_char_sprite_pos($Sprite)

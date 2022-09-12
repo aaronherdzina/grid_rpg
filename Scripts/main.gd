@@ -4,18 +4,36 @@ const debug = false # for dev
 
 
 # TILES
-const BASIC_TILE = preload("res://Sprites/tiles/new style/standard/standard grass tile.png")
+const BASIC_TILE = preload("res://Sprites/tiles/new style/standard/iso grass.png")
 const WALL_TILE = preload("res://Sprites/tiles/new style/unique/standard water tile.png")
+const GRASS_TILE = preload("res://Sprites/tiles/new style/standard/iso grass.png")
+const GRASS_TILE_DETAIL = preload("res://Sprites/tiles/new style/standard/iso grass rock plant detail.png")
+const GRASS_TILE_EXPOSED_ROCK = preload("res://Sprites/tiles/new style/standard/iso exposed rock.png")
+const GRASS_PARTIAL_ROAD = preload("res://Sprites/tiles/new style/standard/iso partial road.png")
+const GRASS_ROAD = preload("res://Sprites/tiles/new style/standard/iso road.png")
+const GRASS_ROAD_FULL = preload("res://Sprites/tiles/new style/standard/iso road full.png")
+const LIGHT_GREY_TILE = preload("res://Sprites/tiles/new style/standard/iso light grey.png")
+const SLATE_TILE = preload("res://Sprites/tiles/new style/standard/iso slate.png")
+const DIRT_TILE = preload("res://Sprites/tiles/new style/standard/iso light red.png")
+const DARK_RED_TILE = preload("res://Sprites/tiles/new style/standard/iso dark red.png")
 
-const ENEMY_SPAWN_TILE = preload("res://Sprites/tiles/new style/unique/enm spawn tile.png")
+
+#### edges:
+const GRASS_TILE_EDGE = preload("res://Sprites/tiles/new style/edges/grass/top_grass_edge.png")
+
+
+const ENEMY_SPAWN_TILE = preload("res://Sprites/tiles/new style/standard/bright tile.png")
 const PLAYER_SPAWN_TILE = preload("res://Sprites/tiles/new style/standard/bright tile.png")
 
+const ITEM_SCENE = preload("res://Scenes/item.tscn")
+
 const FOREST_PATH_TILE_1 = preload("res://Sprites/tiles/new style/unique/rock tile.png")
-const WATER_TILE_1 = preload("res://Sprites/tiles/new style/unique/standard water tile.png")
-const WATER_TILE_2 = preload("res://Sprites/tiles/new style/unique/standard water tile.png")
+const WATER_TILE_1 = preload("res://Sprites/tiles/new style/standard/iso blue water.png")
+const WATER_TILE_2 = preload("res://Sprites/tiles/new style/standard/iso light blue water.png")
 
 const DMG_EFFECT_SCENE = preload("res://Scenes/dmgEffect.tscn")
 
+var roads_pieces = [GRASS_TILE_EXPOSED_ROCK, GRASS_PARTIAL_ROAD, GRASS_ROAD_FULL, GRASS_ROAD]
 var basic_water_tiles = [WATER_TILE_1, WATER_TILE_2]
 var special_forest_tiles = [FOREST_PATH_TILE_1]
 
@@ -28,7 +46,7 @@ const TILE = preload("res://Scenes/tile.tscn")
 const ENEMY = preload("res://Scenes/enemy.tscn")
 const PLAYER = preload("res://Scenes/player.tscn")
 #### SAVE LOAD VARS
-var game_name = 'game_name'
+var game_name = 'grid_rpg_test'
 var playerFilepath = "user://" + str(game_name) + "_playerData_.data"
 var dataFilepath = "user://" + str(game_name) + "_gameData_.data"
 # Game data like preferred settings, global stats like playTime, gloal/continous scoring, e.c.t, ..
@@ -75,7 +93,7 @@ var cam_move_vel = 50
 
 
 #### SAVE LOAD FUNCS
-var debug_remove_save_file = true
+var debug_remove_save_file = false
 
 func loadGameData(onlyGameData=false):
 	print("loading...")
@@ -109,7 +127,7 @@ func saveGameData():
 	print("Saving... " + str(dataFilepath))
 	var file = File.new()
 	file.open(dataFilepath, File.WRITE)
-	file.store_var(gameData)
+	file.store_var({})
 	file.close()
 	print("saved " + str(dataFilepath))
 	pass
@@ -118,7 +136,8 @@ func savePlayerData():
 	print("Saving... " + str(playerFilepath))
 	var file = File.new()
 	file.open(dataFilepath, File.WRITE)
-	file.store_var(playerData)
+	file.store_var(meta.loadedClass)
+	meta.loadClassDetails(meta.loadedClass)
 	file.close()
 	print("Saved " + str(playerFilepath))
 	pass
@@ -129,10 +148,13 @@ func savePlayerData():
 
 #### INPUT FUNCS #MOVE TO INPUT ONLY NODE/SCRIPT
 
-func _input(event):
+func _input(_event): 
    # Mouse in viewport coordinates
 	if Input.is_action_pressed("ui_quit"): 
 		handle_main_menu_input("ui_quit")
+	elif Input.is_action_pressed("action"):
+		if current_screen == "battle":
+			handle_in_battle_input("action")
 	elif Input.is_action_pressed("start"): 
 		if current_screen == 'main_menu':
 			handle_main_menu_input("start")
@@ -168,6 +190,8 @@ func handle_in_battle_input(action):
 	if action == "start":
 		var level = get_node("/root/level")
 		level.end_turn()
+	elif action == "action":
+		pass
 	elif action == "scroll_forward":
 		if get_node("/root").has_node("player"):
 			var player = get_node("/root/player")
@@ -240,7 +264,6 @@ func make_timer(time=0):
 	timer.set_one_shot(true)
 	get_node("/root").add_child(timer)
 	return timer
-
 
 
 func handle_main_menu_input(action):

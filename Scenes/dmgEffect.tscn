@@ -1,10 +1,19 @@
-[gd_scene load_steps=4 format=2]
+[gd_scene load_steps=5 format=2]
 
-[ext_resource path="res://fonts/new_dynamicfont.tres" type="DynamicFont" id=1]
 [ext_resource path="res://Scripts/dmgEffect.gd" type="Script" id=2]
 
-[sub_resource type="Animation" id=1]
-resource_name = "dmg_text_anim"
+[sub_resource type="DynamicFontData" id=1]
+font_path = "res://fonts/font4.ttf"
+
+[sub_resource type="DynamicFont" id=2]
+size = 65
+outline_size = 2
+outline_color = Color( 0, 0, 0, 1 )
+use_mipmaps = true
+use_filter = true
+font_data = SubResource( 1 )
+
+[sub_resource type="Animation" id=3]
 length = 2.5
 tracks/0/type = "value"
 tracks/0/path = NodePath(".:position")
@@ -44,6 +53,7 @@ tracks/2/keys = {
 }
 
 [node name="dmgEffect" type="Node2D"]
+scale = Vector2( 2, 2 )
 z_index = 25
 script = ExtResource( 2 )
 __meta__ = {
@@ -57,7 +67,7 @@ margin_left = 68.9429
 margin_top = -148.492
 margin_right = 204.943
 margin_bottom = -64.4924
-custom_fonts/font = ExtResource( 1 )
+custom_fonts/font = SubResource( 2 )
 custom_colors/font_color = Color( 1, 1, 1, 1 )
 text = "-5"
 autowrap = true
@@ -67,4 +77,4 @@ __meta__ = {
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
 playback_speed = 1.2
-anims/dmg_text_anim = SubResource( 1 )
+anims/dmg_text_anim = SubResource( 3 )
