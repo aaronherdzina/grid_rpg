@@ -1,8 +1,8 @@
 extends Node2D
 
 var wall_spawn_chance = 9
-var text_x_buffer = -1000
-var text_y_buffer = 70
+var text_x_buffer = -1150
+var text_y_buffer = 700
 var test_lvl = {
 	"cols": 6,
 	"rows": 8,
@@ -22,17 +22,18 @@ var random_lvl = {
 	"tile_list": []
 	}
 
+var process_displays = true
 var random_turns = 4
 var current_turn = 0
 var lvl_turns = 10
-var max_lvl_cols = 18
-var min_lvl_cols = 5
+var max_lvl_cols = 28
+var min_lvl_cols = 6
 
 var min_lvl_turns = 3
 var max_lvl_turns = 5
 
-var max_lvl_rows = 27
-var min_lvl_rows = 7
+var max_lvl_rows = 24
+var min_lvl_rows = 4
 # debug for pathfinding tests
 
 var path_end_tile = null
@@ -45,6 +46,7 @@ var bottom_tiles = []
 var left_tiles = []
 var right_tiles = []
 var round_turns = []
+var round_turn_icons = []
 var tile_gap = 110
 var far_tile_gap_setting = 130
 var far_gap_tile_outline_size = 1.012
@@ -78,108 +80,19 @@ func remove_tiles():
 	level_tiles = []
 
 
-"""
-func spawn_premade_tiles_old(lvl_obj):
-	randomize()
-	#lvl_obj example:
-	#lvl_obj = {
-	#	tile_list = [],
-	#	cols = 7,
-	#	rows = 6
-	#}
-	
-	var col = lvl_obj["cols"]
-	var row = lvl_obj["rows"]
-# warning-ignore:unused_variable
-	var tiles = lvl_obj["tile_list"]
-	current_rows = row
-	current_cols = col
-	#if not starting_tile:
-	#	starting_tile = get_node("starting_tile")
-
-	var tile_index = -1
-
-	#print('lvl_obj ' + str(lvl_obj))
-	level_astar = AStar2D.new()
-	#var res = astar.get_id_path(1, 3) # Returns [1, 2, 3]
-	tile_gap = close_tile_gap_setting if rand_range(0, 1) >= .5 else far_tile_gap_setting
-	
-	var shadow_noise_x = 0
-	var shadow_noise_y = 0
-	var shadow_noise_vel = 1.2
-	var shadow_max_x = 12
-	var shadow_max_y = 12
-	for c in range(0, col):
-		for r in range(0, row):
-			var t = main.TILE.instance()
-			var tile_info = ""
-			tile_index += 1
-			get_node("tile_container").add_child(t)
-			t.row = r
-			t.col = c
-			level_tiles.append(t)
-			t.index = tile_index
-			shadow_noise_x += rand_range(-shadow_noise_vel, shadow_noise_vel)
-			shadow_noise_y += rand_range(-shadow_noise_vel, shadow_noise_vel)
-			
-			if shadow_noise_x > shadow_max_x:
-				shadow_noise_x = shadow_max_x
-			if shadow_noise_x < -shadow_max_x:
-				shadow_max_x = -shadow_max_x
-
-			if shadow_noise_y > shadow_max_y:
-				shadow_noise_y = shadow_max_y
-			if shadow_noise_y < -shadow_max_y:
-				shadow_noise_y = -shadow_max_y
-			
-			#print('Vector2(shadow_noise_x, shadow_noise_y) ' + str(Vector2(shadow_noise_x, shadow_noise_y)))
-			t.get_node("shadow").position = Vector2(shadow_noise_x, shadow_noise_y)
-			if main.debug: tile_info += " |index " + str(tile_index)
-
-			if not starting_tile:
-				starting_tile = t
-				t.position = Vector2(tile_gap * 2.8, tile_gap * .75)
-			else:
-				t.position = Vector2(starting_tile.global_position.x +
-									(r * tile_gap),
-									starting_tile.global_position.y +
-									(c * tile_gap))
-			if main.debug: tile_info += " |row/col " + str(r) + '/' + str(c) + "\ntile_gap: " + str(tile_gap * r)
-			if main.debug: 
-				t.get_node("debug_info").visible = true
-				t.get_node("debug_info").set_text(tile_info)
-
-	set_points(level_astar, level_tiles)
-	set_tile_neighbors(row, col)
-	map_tiles(lvl_obj)
-	# call to ensure we wait longer than the delay in map_tiles() or we have a race condition
-	var timer1 = Timer.new()
-	timer1.set_wait_time(len(level_tiles) * (spawn_types_display_speed * 1.5))
-	timer1.set_one_shot(true)
-	get_node("/root").add_child(timer1)
-	timer1.start()
-	yield(timer1, "timeout")
-	timer1.queue_free()
-	for t in level_tiles:
-		if t.spawn_enemies:
-			print("spawn enemy")
-			spawn_enemies(level_astaq,  t, t)
-			var timer = Timer.new()
-			timer.set_wait_time(spawn_types_display_speed)
-			timer.set_one_shot(true)
-			get_node("/root").add_child(timer)
-			timer.start()
-			yield(timer, "timeout")
-			timer.queue_free()
-	spawn_player()
-"""
-
 func set_full_level(lvl_obj):
 	lvl_obj["cols"] = max_lvl_cols
 	lvl_obj["rows"] = max_lvl_rows
 	var tile_count  = lvl_obj["cols"] * lvl_obj["rows"]
 	for i in range(0, tile_count):
 		lvl_obj["tile_list"].append("wall")
+
+
+func remove_icons():
+	for icon in round_turn_icons:
+		if icon and main.checkIfNodeDeleted(icon) == false:
+			icon.queue_free()
+
 
 func spawn_premade_tiles(lvl_obj, overwrite_details=true, preset_course=false):
 	randomize()
@@ -307,6 +220,9 @@ func spawn_premade_tiles(lvl_obj, overwrite_details=true, preset_course=false):
 	reset_level_vals()
 	spawn_player()
 	meta.spawn_enemies()
+	
+	meta.set_turn_order_info()
+
 
 
 func reset_level_vals():
@@ -329,20 +245,20 @@ func randomize_level(lvl_obj):
 	var player_spawn_set = false
 	enms = 2 + round(tile_count * .01)
 	map_tiles(lvl_obj)
-	var tile_type_set = [meta.DIRT_TYPE, meta.DIRT_TYPE,\
-						meta.WATER_TYPE, meta.WATER_TYPE, meta.WATER_TYPE,
-						meta.EMPTY_TYPE, 
+	var tile_type_set = [meta.DIRT_TYPE, meta.DIRT_TYPE, meta.DIRT_TYPE,\
+						#meta.WATER_TYPE, meta.WATER_TYPE, meta.WATER_TYPE,
+						#meta.EMPTY_TYPE, 
 						meta.GRASS_TYPE,meta.GRASS_TYPE, meta.GRASS_TYPE, meta.GRASS_TYPE, meta.GRASS_TYPE]
 
 	for t in level_tiles:
 		var random_tile_type = tile_type_set[rand_range(0, len(tile_type_set))]
-		if t.row <= lvl_obj["rows"] and t.col <= lvl_obj["cols"] and\
-			t.row > 0 and t.col > 0:
+		if t.row <= lvl_obj["rows"] - 1  and t.col <= lvl_obj["cols"] - 1 and\
+			t.row > 1 and t.col > 1:
 			t.current = true
 			t.map_tile_type(random_tile_type)
-			if rand_range(0, 1) >= .95:
+			if rand_range(0, 1) >= .999:
 				t.spawn_enemies = true
-			elif rand_range(0, 1) >= .95 and not player_spawn_set:
+			elif rand_range(0, 1) >= .9987 and not player_spawn_set:
 				player_spawn_set = true
 				t.spawn_player = true
 		else:
@@ -351,6 +267,41 @@ func randomize_level(lvl_obj):
 
 	for t in level_tiles:
 		t.map_tile_type_by_neighbors(false, false, false, true)
+
+	var randomly_set_water = true
+	if randomly_set_water:
+		if rand_range(0, 1) >= .3:
+			set_bodies_of_water(lvl_obj)
+	else:
+		set_bodies_of_water(lvl_obj)
+	#for t in level_tiles:
+		#if t.col == 2 and t.index < len(level_tiles) * .7:
+	var t = level_tiles[rand_range(2, 15)]
+
+	var randomly_set_paths = true
+	if randomly_set_paths:
+		if rand_range(0, 1) >= .3:
+			var random_type = meta.BASIC_TYPE[floor(rand_range(0, len(meta.BASIC_TYPE)))]
+			var paths = floor(rand_range(2, 4))
+			var width = floor(rand_range(0, 2))
+					
+			for p in paths:
+				var spot_start = level_tiles[rand_range(0, len(level_tiles))]
+				var end_start = level_tiles[rand_range(0, len(level_tiles))]
+				if p == paths - 1:
+					if get_node("/root").has_node("player"):
+						var player = get_node("/root/player")
+						spot_start = player.current_tile
+				for tile in level_tiles:
+					if tile.spawn_enemies:
+						end_start = tile
+						break
+				meta.set_tiles_in_path(spot_start, end_start, random_type, width)
+	
+	else:
+		var random_type = meta.BASIC_TYPE[floor(rand_range(0, len(meta.BASIC_TYPE)))]
+		meta.set_tiles_in_path(level_tiles[t.index], level_tiles[len(level_tiles) - int(t.index * .80)], random_type)
+
 
 	var timer14 = Timer.new()
 	timer14.set_wait_time((len(level_tiles)*.01) * spawn_types_display_speed)
@@ -362,10 +313,13 @@ func randomize_level(lvl_obj):
 
 	reset_level_vals()
 	spawn_player()
-	
-			
+
+
 	for t in level_tiles:
 		meta.helpers_set_edge_tiles(t)
+		if t.tile_type == meta.WATER_TYPE:
+			pass
+			#t.get_node("AnimationPlayer").play("water anim")
 
 
 func set_random_level(lvl_obj):
@@ -424,6 +378,47 @@ func set_points(astar_path_obj, list, tile_weight=meta.unccupied_tile_weight):
 		astar_path_obj.add_point(t.index, t.global_position, tile_weight)
 
 
+func set_bodies_of_water(lvl_obj, bodies=0):
+	randomize()
+	var used_indexes = []
+	var row_edge_buffer = 2
+	var col_edge_buffer = 2
+	var grouping_buffer = 3
+	var grouping_buffer_default = 15
+	if bodies <= 0:
+		bodies = floor(rand_range(2, 11))
+	for body in range(0, bodies):
+		var body_set = false
+		for t in level_tiles:
+			if body_set:
+				break
+			if t.row <= lvl_obj["rows"] and t.col <= lvl_obj["cols"]\
+			   and t.row > row_edge_buffer and t.col > col_edge_buffer\
+			   and t.index % 3 == 0:
+				if grouping_buffer <= 0:
+					grouping_buffer = grouping_buffer_default
+					var body_size = rand_range(0, 4)
+					var body_of_water = meta.get_adjacent_tiles_in_distance(t, body_size)
+					var already_set = false
+					
+					### Make sure we didn't set this tile already, if we did skip
+					for idx in used_indexes:
+						if idx == t.index:
+							already_set = true
+					if already_set:
+						continue
+					###
+					else:
+						for water_body_tile in body_of_water:
+							if rand_range(0, 1) >= .05:
+								water_body_tile.current = true
+								water_body_tile.map_tile_type(meta.WATER_TYPE)
+								used_indexes.append(water_body_tile.index)
+						body_set = true
+				else: 
+					grouping_buffer -= 1
+
+
 func map_tiles(lvl_obj=null, preset_level=null):
 	if len(level_tiles) >= 100:
 		wall_spawn_chance = 9.8
@@ -466,6 +461,7 @@ func map_tiles(lvl_obj=null, preset_level=null):
 			else:
 				t.map_tile_type("move")
 
+
 func set_borders(lvl_obj=null):
 	randomize()
 	if lvl_obj:
@@ -489,45 +485,9 @@ func set_borders(lvl_obj=null):
 				t.map_tile_type(type)
 
 
-"""
-func map_tiles_old(lvl_obj=null):
-	if len(level_tiles) >= 100:
-		wall_spawn_chance = 8.2
-	if lvl_obj:
-		var i = 0
-		for t in level_tiles:
-			if i <= len(lvl_obj["tile_list"]):
-				var tile_type = lvl_obj["tile_list"][i]
-				t.map_tile_type(tile_type)
-			else:
-				break
-			i += 1
-			var timer = Timer.new()
-			timer.set_wait_time(spawn_types_display_speed)
-			timer.set_one_shot(true)
-			get_node("/root").add_child(timer)
-			timer.start()
-			yield(timer, "timeout")
-			timer.queue_free()
-	else:
-		for t in level_tiles:
-			if rand_range(0, 10) >= wall_spawn_chance:
-				t.map_tile_type("wall")
-			else:
-				t.map_tile_type("")
-			var timer = Timer.new()
-			timer.set_wait_time(spawn_types_display_speed)
-			timer.set_one_shot(true)
-			get_node("/root").add_child(timer)
-			timer.start()
-			yield(timer, "timeout")
-			timer.queue_free()
-"""
-
-
 func spawn_player(new_player=true):
 	if new_player:
-		print("in spawn_player")
+		#print("in spawn_player")
 		meta.player_turn = true
 		if get_node("/root").has_node("player"):
 			var p = get_node("/root/player")
@@ -538,6 +498,7 @@ func spawn_player(new_player=true):
 		get_node("/root").add_child(p)
 		meta.current_characters.append(p)
 		meta.current_character_turn = p
+		p.char_type = meta.DOG_TYPE
 		var spawn_tile = level_tiles[0]
 		
 		for t in level_tiles:
@@ -553,11 +514,25 @@ func spawn_player(new_player=true):
 		
 		
 		p.set_spawn_tile(spawn_tile)
+		if has_node("text_overlay/text_overlay_node"):
+			var text_overlay = get_node("text_overlay/text_overlay_node")
+			var text_overlay_parent = text_overlay.get_parent()
+			text_overlay_parent.remove_child(text_overlay)
+			p.get_node("cam_body/cl").add_child(text_overlay)
+			text_overlay.position = p.get_node("cam_body/cl/display_node").global_position
 		change_turn_display_name(p)
+		meta.map_char(p.char_type, p)
+		for btn in p.skill_btns:
+			if main.checkIfNodeDeleted(btn) == false and btn:
+				btn.call_defered("queue_free")
+		p.skill_btns = []
+		p.set_skill_btn_position()
 	else:
 		var p = get_node("/root/player")
 		p.reset_player()
 		meta.current_character_turn = p
+		meta.map_char(p.char_type, p)
+		p.set_skill_btn_position()
 	handle_level_start_camera_change_display()
 	
 
@@ -582,7 +557,7 @@ func get_spawn_tile():
 	for t in level_tiles:
 		if t.spawn_player:
 			return t
-	print("no spawn could be looking for 'tee'???")
+	#print("no spawn could be looking for 'tee'???")
 
 
 func spawn_player_old():
@@ -591,11 +566,8 @@ func spawn_player_old():
 	var spawn_tile = level_tiles[0]
 	var count = 0
 	for t in level_tiles:
-		print("here???" + str(t.spawn_player) + str(t.can_move))
 		if t.can_move and t.spawn_player:
-			print("acceptable spawn point")
 			if spawn_tile == level_tiles[0] and t != level_tiles[0] and t.row != 0 and t.col != 0:
-				print("found player tile")
 				spawn_tile = t
 			if len(t.neighbors) >= 2:
 				# must have at least 2 open spots nearby
@@ -606,7 +578,6 @@ func spawn_player_old():
 					if not n.can_move:
 						safe_spawn = false
 				if safe_spawn:
-					print("found player tile is safe spawn")
 					spawn_tile = t
 
 	p.set_spawn_tile(spawn_tile)
@@ -617,33 +588,6 @@ func set_tile_neighbors(row, col):
 	for t in level_tiles:
 		connect_astart_path_neightbors(level_astar, t.index, t, row, col, meta.unccupied_tile_weight)
 		t.get_tile_neighbors()
-
-"""
-func connect_astart_path_neightbors_OLD(astar_path_obj, tile_index, tile, row, col, tile_weight):
-	# We use the current tile's index as reference
-	var above_tile_idx = tile_index - row
-	var right_tile_idx = tile_index + 1
-	var below_tile_idx = tile_index + row
-	var left_tile_idx = tile_index - 1
-	var tile_count = len(level_tiles)# from 0
-	# tiles set for row in for each col, row set on x, col on y
-	# set initial spot
-	# make sure point exists, node exists and make sure the
-	# index is not out of range or the tile array
-	#print('right_tile_idx ' + str(tile_index) + ' v right_tile_idx ' + str(right_tile_idx))
-	
-	if tile.col > 0 and astar_path_obj.has_point(above_tile_idx) and above_tile_idx >= 0 and above_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
-		astar_path_obj.connect_points(tile_index, above_tile_idx, true)
-
-	if tile.row < row-1 and astar_path_obj.has_point(right_tile_idx) and right_tile_idx >= 0 and right_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
-		astar_path_obj.connect_points(tile_index, right_tile_idx, true)
-
-	if tile.col < col-1 and astar_path_obj.has_point(below_tile_idx) and below_tile_idx >= 0 and below_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
-		astar_path_obj.connect_points(tile_index, below_tile_idx, true)
-
-	if tile.row > 0 and astar_path_obj.has_point(left_tile_idx) and left_tile_idx >= 0 and left_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
-		astar_path_obj.connect_points(tile_index, left_tile_idx, true)
-"""
 
 
 func connect_astart_path_neightbors(astar_path_obj, tile_index, tile, row, col, tile_weight):
@@ -658,59 +602,82 @@ func connect_astart_path_neightbors(astar_path_obj, tile_index, tile, row, col, 
 	var below_right_tile_idx = tile_index + 1 + row
 	var above_right_tile_idx = tile_index + 1 - row
 	var tile_count = len(level_tiles)
+	if main.checkIfNodeDeleted(astar_path_obj) == false:
+		if tile.col > 0 and astar_path_obj.has_point(above_tile_idx) and above_tile_idx >= 0 and above_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
+			astar_path_obj.connect_points(tile_index, above_tile_idx, true)
 	
-	if tile.col > 0 and astar_path_obj.has_point(above_tile_idx) and above_tile_idx >= 0 and above_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
-		astar_path_obj.connect_points(tile_index, above_tile_idx, true)
-
-	if tile.row < row-1 and astar_path_obj.has_point(right_tile_idx) and right_tile_idx >= 0 and right_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
-		astar_path_obj.connect_points(tile_index, right_tile_idx, true)
-
-	if tile.col < col-1 and astar_path_obj.has_point(below_tile_idx) and below_tile_idx >= 0 and below_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
-		astar_path_obj.connect_points(tile_index, below_tile_idx, true)
-
-	if tile.row > 0 and astar_path_obj.has_point(left_tile_idx) and left_tile_idx >= 0 and left_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
-		astar_path_obj.connect_points(tile_index, left_tile_idx, true)
-
-	if tile.row > 0 and astar_path_obj.has_point(below_left_tile_idx) and below_left_tile_idx >= 0 and below_left_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
-		astar_path_obj.connect_points(tile_index, below_left_tile_idx, true)
+		if tile.row < row-1 and astar_path_obj.has_point(right_tile_idx) and right_tile_idx >= 0 and right_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
+			astar_path_obj.connect_points(tile_index, right_tile_idx, true)
 	
-	if tile.row > 0 and astar_path_obj.has_point(above_left_tile_idx) and above_left_tile_idx >= 0 and above_left_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
-		astar_path_obj.connect_points(tile_index, above_left_tile_idx, true)
+		if tile.col < col-1 and astar_path_obj.has_point(below_tile_idx) and below_tile_idx >= 0 and below_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
+			astar_path_obj.connect_points(tile_index, below_tile_idx, true)
 	
-	if tile.row > 0 and astar_path_obj.has_point(below_right_tile_idx) and below_right_tile_idx >= 0 and below_right_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
-		astar_path_obj.connect_points(tile_index, below_right_tile_idx, true)
+		if tile.row > 0 and astar_path_obj.has_point(left_tile_idx) and left_tile_idx >= 0 and left_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
+			astar_path_obj.connect_points(tile_index, left_tile_idx, true)
 	
-	if tile.row > 0 and astar_path_obj.has_point(above_right_tile_idx) and above_right_tile_idx >= 0 and above_right_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
-		astar_path_obj.connect_points(tile_index, above_right_tile_idx, true)
+		if tile.row > 0 and astar_path_obj.has_point(below_left_tile_idx) and below_left_tile_idx >= 0 and below_left_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
+			astar_path_obj.connect_points(tile_index, below_left_tile_idx, true)
+		
+		if tile.row > 0 and astar_path_obj.has_point(above_left_tile_idx) and above_left_tile_idx >= 0 and above_left_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
+			astar_path_obj.connect_points(tile_index, above_left_tile_idx, true)
+		
+		if tile.row > 0 and astar_path_obj.has_point(below_right_tile_idx) and below_right_tile_idx >= 0 and below_right_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
+			astar_path_obj.connect_points(tile_index, below_right_tile_idx, true)
+		
+		if tile.row > 0 and astar_path_obj.has_point(above_right_tile_idx) and above_right_tile_idx >= 0 and above_right_tile_idx < tile_count and main.checkIfNodeDeleted(level_tiles[tile_index]) == false:
+			astar_path_obj.connect_points(tile_index, above_right_tile_idx, true)
 
 
 # Called every frame. 'delta' is the elapsed time since the previous frame.
 func _process(_delta):
 	if len(round_turns) > 0 and main.checkIfNodeDeleted(round_turns) == false:
 		change_turn_display_name(round_turns[0])
-		
+	
+	if get_node("/root").has_node("player"):
+		if process_displays:
+			handle_turn_order_display()
+		var p = get_node("/root/player")
+		if p.show_overlay:
+			show_enm_atk_range()
+
+func handle_turn_order_display():
+	var p = get_node("/root/player")
+	var char_count = 0
+	var x_buffer = 132
+	for character_icon in round_turn_icons:
+		char_count += 1
+		if p and p.has_node("cam_body/cl/text_overlay"):
+			character_icon.position = p.get_node("cam_body/cl/text_overlay").global_position #$text_overlay/text_overlay_node/turn_order_container.global_position
+		character_icon.position.x += char_count * x_buffer
+		if char_count > 1:
+			character_icon.modulate = Color(1, 1, 1, (1- (char_count*.1)))
 
 
 func attach_text_overlay(follow_node, global=false):
-	if not global:
-		if $text_overlay/text_overlay_node.position.x != follow_node.position.x + text_x_buffer:
-			$text_overlay/text_overlay_node.position.x = follow_node.position.x + text_x_buffer
-			
-		if $text_overlay/text_overlay_node.position.y != follow_node.position.y + text_y_buffer:
-			$text_overlay/text_overlay_node.position.y = follow_node.position.y + text_y_buffer
-	else:
-		if $text_overlay/text_overlay_node.position.x != follow_node.global_position.x + text_x_buffer:
-			$text_overlay/text_overlay_node.position.x = follow_node.global_position.x + text_x_buffer
-			
-		if $text_overlay/text_overlay_node.position.y != follow_node.global_position.y + text_y_buffer:
-			$text_overlay/text_overlay_node.position.y = follow_node.global_position.y + text_y_buffer
+	var p = get_node("/root/player")
+	return
+	if p and p.has_node("cam_body/cl/text_overlay_node"):
+		var text_overlay = p.get_node("cam_body/cl/text_overlay_node")
+		if not global:
+			if $text_overlay/text_overlay_node.position.x != follow_node.position.x + text_x_buffer:
+				$text_overlay/text_overlay_node.position.x = follow_node.position.x + text_x_buffer
+				
+			if $text_overlay/text_overlay_node.position.y != follow_node.position.y + text_y_buffer:
+				$text_overlay/text_overlay_node.position.y = follow_node.position.y + text_y_buffer
+		else:
+			if $text_overlay/text_overlay_node.position.x != follow_node.global_position.x + text_x_buffer:
+				$text_overlay/text_overlay_node.position.x = follow_node.global_position.x + text_x_buffer
+				
+			if $text_overlay/text_overlay_node.position.y != follow_node.global_position.y + text_y_buffer:
+				$text_overlay/text_overlay_node.position.y = follow_node.global_position.y + text_y_buffer
 
 
 func process_enemy_turns():
 	if not processing_turns:
 		processing_turns = true
+		update_turn_order_details()
 		while len(round_turns) > 0 and main.checkIfNodeDeleted(round_turns[0]) == false:
-			print('starting turn for ' + str(round_turns[0].id))
+			print('starting turn for ' + str(round_turns[0].char_name))
 			var turn_time_limit = 12
 			if not round_turns[0].processing_turn:
 				round_turns[0].validate_enm_for_turn()
@@ -724,6 +691,7 @@ func process_enemy_turns():
 			var player = get_node("/root/player")
 			while round_turns[0] and main.checkIfNodeDeleted(round_turns[0]) == false and round_turns[0].processing_turn:
 				change_turn_display_name(round_turns[0])
+				update_turn_order_details()
 				var timer = Timer.new()
 				timer.set_wait_time(1)
 				timer.set_one_shot(true)
@@ -746,8 +714,26 @@ func process_enemy_turns():
 				round_turns.remove(0)
 		if get_node("/root").has_node("player"):
 			change_turn_display_name(get_node("/root/player"))
+		update_turn_order_details()
 		processing_turns = false
 		end_turn()
+
+
+func update_turn_order_details():
+	var index = 0
+	for icon in round_turn_icons:
+		icon.visible = false
+		if index < len(round_turns):
+			var char_node = round_turns[index]
+			var char_detail_text = "HP: "+str(char_node.health)+"/"+str(char_node.default_health)+" DEF: " + str(char_node.current_defense)+"/"+str(str(char_node.default_defense))\
+								  +"\n"+str(char_node.current_attack)+"/"+str(char_node.default_attack)
+			icon.get_node("title").set_text(char_node.char_name)
+			icon.get_node("misc").set_text(char_detail_text)
+			icon.visible = true
+		else:
+			icon.get_node("title").set_text("")
+			icon.get_node("misc").set_text("")
+		index += 1
 
 
 func check_should_end_level():
@@ -757,7 +743,7 @@ func check_should_end_level():
 		for enm in get_tree().get_nodes_in_group("enemies"):
 			if main.checkIfNodeDeleted(enm) == false and enm.alive:
 				enms_left += 1
-		if enms_left <= 0 or current_turn >= random_turns:
+		if enms_left <= 0: # or current_turn >= random_turns: for turn length goal?
 			meta.spawn_new_level()
 			return true
 	return false
@@ -773,30 +759,31 @@ func end_turn():
 	var p = get_node("/root/player")
 	p.stealth = is_player_stealth()
 	if meta.player_turn: 
-		p.get_node("cam_body/cam/overlays and underlays/stealth_overlay").visible = p.stealth
-		p.get_node("cam_body/cam/overlays and underlays/chased_overlay").visible = not p.stealth
+		p.get_node("cam_body/cl/overlays and underlays/stealth_overlay").visible = p.stealth
+		p.get_node("cam_body/cl/overlays and underlays/chased_overlay").visible = not p.stealth
 		if p.stealth:
-			print('here? stealth')
+			pass
 		meta.player_turn = false
 		p.stop_turn()
 		round_turns = []
 		for enm in get_tree().get_nodes_in_group("enemies"):
 			if main.checkIfNodeDeleted(enm) == false and enm.alive:
 				enm.current_tile.set_popout_details()
+				enm.get_node("card").visible = false
 				round_turns.append(enm)
 		process_enemy_turns()
 	else:
-		p.get_node("cam_body/cam/overlays and underlays/stealth_overlay").visible = p.stealth
-		p.get_node("cam_body/cam/overlays and underlays/chased_overlay").visible = not p.stealth
+		p.get_node("cam_body/cl/overlays and underlays/stealth_overlay").visible = p.stealth
+		p.get_node("cam_body/cl/overlays and underlays/chased_overlay").visible = not p.stealth
 
 		if p.stealth:
-			print('here? stealth')
+			pass
 		current_turn += 1
 		meta.player_turn = true
 		p.start_turn()
 		change_turn_display_name(p)
-		print('player turn')
-
+		#print('player turn')
+	meta.set_turn_order_info()
 
 func is_player_stealth():
 	# reset to player stealth value as its change with enm and player turns
@@ -810,7 +797,8 @@ func is_player_stealth():
 				if not player.invisible:
 					return false
 				else:
-					enm.chasing_player = false
+					pass
+					# enm.chasing_player = false
 	return true
 
 
@@ -820,9 +808,22 @@ func change_static_battle_ui(action):
 		pass
 
 
+func show_enm_atk_range():
+	if get_node("/root").has_node("player"):
+		var p = get_node("/root/player")
+		for enm in get_tree().get_nodes_in_group("enemies"):
+			if main.checkIfNodeDeleted(enm) == false and enm.alive:
+				var enm_v_tiles = meta.get_adjacent_tiles_in_distance(enm.current_tile, enm.view_range)
+				for enm_v_t in enm_v_tiles:
+					if self != enm_v_t:
+						enm_v_t.modulate = Color(enm.red, enm.green, enm.blue, 1)
+
+
 func change_turn_display_name(character):
 	meta.get_character_display_text(character)
-	$text_overlay/text_overlay_node/level_text.set_text("Turn " + str(current_turn) + "  /  " + str(random_turns))
+	var p = get_node("/root/player")
+	if p and p.has_node("cam_body/cl/text_overlay_node"):
+		p.get_node("cam_body/cl/text_overlay_node/level_text").set_text("Turn " + str(current_turn) + "  /  " + str(random_turns))
 	#var character_stats = all_stats[0]
 	#var additional_details = all_stats[1]
 	#$text_overlay/character_stats.set_text(character_stats)

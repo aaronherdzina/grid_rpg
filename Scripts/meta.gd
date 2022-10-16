@@ -2,6 +2,7 @@ extends Node
 
 const GRASS_TYPE = "grass"
 const WATER_TYPE = "water"
+const GRASS_TYPE_NO_MOVE = "grass blocker"
 const DIRT_TYPE = "dirt"
 const EMPTY_TYPE = "empty"
 const OVERGROWN_GRASS_TYPE = "overgrown"
@@ -11,7 +12,17 @@ const FOLIAGE_DIRT_TYPE = "dirt_foliage"
 const proximity_mode_type = "prox"
 const SPAWN_ENEMY_TYPE = "dirt_foliage"
 
-var char_names = ["Patrol Construct", "Brute", "Ranger", "Wizard", "Grunt"]
+#####
+
+const BEAR_TYPE = "bear"
+const DOG_TYPE = "dog"
+const CAT_TYPE = "cat"
+const BOAR_TYPE = "boar"
+const PUMA_TYPE = "puma"
+
+#####
+var BASIC_TYPE = [FOLIAGE_GRASS_TYPE, FOLIAGE_GRASS_TYPE, FOLIAGE_DIRT_TYPE, DIRT_TYPE]
+var char_types = [BEAR_TYPE, DOG_TYPE, CAT_TYPE, BOAR_TYPE, PUMA_TYPE]
 
 var standard_atk_type = "standard"
 var throw_atk_type = "throw"
@@ -24,12 +35,12 @@ var current_level_rows = 6
 var default_level_cols = 10
 var default_level_rows = 6
 var player_turn = true
-var max_weight =  999.0
-var occupied_tile_weight = 1000.0 # 10000 is min to be unpassible 
-var unccupied_tile_weight = 1.0
-var difficult_terrain_weight = 2.0
-var wall_tile_weight = 2000.0
-var dangerous_terrain_weight = 5.0
+var max_weight = float(99999.0)
+var occupied_tile_weight = float(1000.0) # 10000 is min to be unpassible 
+var unccupied_tile_weight = float(1.0)
+var difficult_terrain_weight = float(2.0)
+var wall_tile_weight = float(2000.0)
+var dangerous_terrain_weight = float(5.0)
 
 var current_characters_idx = 0
 var current_characters = []
@@ -81,6 +92,23 @@ var course_1 = {
 #func _process(delta):
 #	pass
 
+func set_tiles_in_path(start, end, type, width=2):
+	var l = get_node("/root/level")
+	if not start or not end or not start.current or not end.current:
+		print("\n*WARN: start or end in set_tiles_in_path is bad, or successful block of null.*\n start "+str(start)+" end " + str(end) + " \n")
+		return
+	var point_path = l.level_astar.get_id_path(start.index, end.index)
+	for p in point_path:
+		for t in l.level_tiles:
+			if t.index == p:
+				t.map_tile_type(type)
+				if width >= 1:
+					for t_n in get_adjacent_tiles_in_distance(t, width):
+						if t_n != t and rand_range(0, 1) >= .15:
+							t_n.map_tile_type(type)
+	for t in l.level_tiles:
+		meta.helpers_set_edge_tiles(t)
+
 
 func fix_char_stat_min_vals(char_node):
 	""" Ensure no character value goes below a game mechanic needed minimum 
@@ -126,6 +154,8 @@ func add_passenger_overlay(char_node):
 
 
 func helpers_set_edge_tiles(tile, set_iso_only=true, left_img=null, top_img=null, right_img=null, bottom_img=null):
+	if not tile.current or tile.tile_type == meta.EMPTY_TYPE:
+		return
 	""" CALLED IN TILE, HAVE 4 CORNER IMGS THAT SET OFF THEIR OWN CONDITION"""
 	
 	
@@ -135,8 +165,8 @@ func helpers_set_edge_tiles(tile, set_iso_only=true, left_img=null, top_img=null
 		... edging that overlays like water spill over
 	
 	"""
-	var outset_soft_color = Color(1, 1, 1, 1)
-	var light_faded_edge = Color(1, 1, 1, 1)
+	var standard_color = Color(1, 1, 1, 1)
+	var light_faded_edge = Color(1, 1, 1, .5)
 	var inset_dark_color = Color(1, 1, 1, 1)
 	var inset_color = Color(1, 1, 1, 1)
 
@@ -153,29 +183,63 @@ func helpers_set_edge_tiles(tile, set_iso_only=true, left_img=null, top_img=null
 	tile.get_node("edges/bottom_edge").visible = false
 	tile.get_node("edges/right_edge").visible = false
 	tile.get_node("edges/left_edge").visible = false
+	tile.get_node("edges/top_left_edge").visible = false
 	tile.get_node("edges/top_edge").visible = false
+	tile.get_node("edges/bottom_right_edge").visible = false
 	
-	
-	if tile.n_top and tile.n_top.tile_type != tile.tile_type:
-		if tile.n_top.tile_type == meta.GRASS_TYPE:
+	var top_edge_z = 1
+	var low_edge_z = 0
+	if tile.n_top and tile.n_top.tile_subtype != tile.tile_subtype:
+		if tile.n_top.tile_subtype == meta.GRASS_TYPE:
 			tile.get_node("edges/top_edge").visible = true
+			tile.get_node("edges/top_edge").set_texture(main.DARK_GRASS_TILE_EDGE)
+			#tile.get_node("edges/top_edge").modulate = standard_color
+			tile.get_node("edges/top_edge").z_index = top_edge_z
+		elif tile.tile_subtype == meta.WATER_TYPE:
+			tile.get_node("edges/top_edge").visible = true
+			tile.get_node("edges/top_edge").set_texture(main.DARK_GENERAL_TILE_EDGE)
+			#tile.get_node("edges/top_edge").modulate = light_faded_edge
+			tile.get_node("edges/top_edge").z_index = low_edge_z
 
-	if tile.n_left and tile.n_left.tile_type != tile.tile_type:
-		if tile.n_left.tile_type == meta.GRASS_TYPE:
+	if tile.n_left and tile.n_left.tile_subtype != tile.tile_subtype:
+		if tile.n_left.tile_subtype == meta.GRASS_TYPE:
 			tile.get_node("edges/left_edge").visible = true
+			tile.get_node("edges/left_edge").set_texture(main.LIGHT_GRASS_TILE_EDGE)
+			tile.get_node("edges/left_edge").z_index = top_edge_z
+		elif tile.tile_subtype == meta.WATER_TYPE:
+			tile.get_node("edges/left_edge").visible = true
+			tile.get_node("edges/left_edge").set_texture(main.LIGHTER_GENERAL_TILE_EDGE)
+			tile.get_node("edges/left_edge").z_index = low_edge_z
 
-"""
-	####### bottom and right edges are currently unused as we set for an iso look only
-	if not set_iso_only and tile.n_bottom and tile.n_bottom.details.biome != tile.details.biome:# and tile.n_bottom.details.biome != 'none':
-
-	if tile.n_top and tile.n_top.tile_type != tile.tile_type:
-		if tile.n_top.tile_type == meta.GRASS_TYPE:
+	if tile.n_bottom and tile.n_bottom.tile_subtype != tile.tile_subtype:
+		if tile.n_bottom.tile_subtype == meta.GRASS_TYPE:
+			tile.get_node("edges/bottom_edge").set_texture(main.GRASS_TILE_OTHER_EDGE)
+			tile.get_node("edges/bottom_edge").z_index = top_edge_z
 			tile.get_node("edges/bottom_edge").visible = true
 
-	if tile.n_left and tile.n_left.tile_type != tile.tile_type:
-		if tile.n_left.tile_type == meta.GRASS_TYPE:
+	if tile.n_right and tile.n_right.tile_subtype != tile.tile_subtype:
+		if tile.n_right.tile_subtype == meta.GRASS_TYPE:
+			tile.get_node("edges/right_edge").set_texture(main.GRASS_TILE_OTHER_EDGE)
+			tile.get_node("edges/right_edge").z_index = top_edge_z
 			tile.get_node("edges/right_edge").visible = true
-"""
+
+	if tile.n_left and tile.n_top and tile.n_top_left\
+	   and tile.tile_subtype != GRASS_TYPE\
+	   and tile.n_left.tile_subtype != GRASS_TYPE\
+	   and tile.n_top.tile_subtype != GRASS_TYPE\
+	   and tile.n_top_left.tile_subtype == GRASS_TYPE:
+			tile.get_node("edges/top_left_edge").set_texture(main.GRASS_TILE_OUTSET_EDGE)
+			tile.get_node("edges/top_left_edge").z_index = top_edge_z + 1
+			tile.get_node("edges/top_left_edge").visible = true
+			tile.get_node("edges/top_left_edge").position = Vector2(-83, -94)
+	elif tile.n_left and tile.n_top and tile.n_top_left\
+	   and tile.tile_subtype != GRASS_TYPE\
+	   and tile.n_left.tile_subtype == GRASS_TYPE\
+	   and tile.n_top.tile_subtype == GRASS_TYPE:
+			tile.get_node("edges/top_left_edge").set_texture(main.GRASS_TILE_INSET_EDGE)
+			tile.get_node("edges/top_left_edge").z_index = top_edge_z + 1
+			tile.get_node("edges/top_left_edge").visible = true
+			tile.get_node("edges/top_left_edge").position = Vector2(-91, -101)
 ######
 ######
 
@@ -235,7 +299,6 @@ func check_if_in_pt_atk_range(enm=null):
 				return
 
 
-
 func generate_level_goal():
 	return "destroy"
 
@@ -266,21 +329,20 @@ func spawn_enemies(amount=0):
 	# also maybe set tiles to spawn enms, so we can more easily just do as many as needed
 	var l = get_node("/root/level")
 	var enms = amount if amount > 0 else floor(rand_range(1,8))
-	print("in spawn_enemies")
 	for idx in range(0, enms):
-		print("checking for enm  " + str(idx) + "...")
+		randomize()
+		#print("checking for enm  " + str(idx) + "...")
 		for index in range(0, len(l.level_tiles) -1):
 			var t = l.level_tiles[len(l.level_tiles) -1 -index]
 			if t.spawn_enemies and not t.picked_for_spawn and t.tile_type != meta.EMPTY_TYPE:
 				var e = main.ENEMY.instance()
-				e.char_name = meta.char_names[rand_range(0, len(meta.char_names) - 1)]
 				get_node("/root").add_child(e)
 				e.id = idx
+				e.char_type = meta.char_types[rand_range(0, len(meta.char_types) - 1)]
+				e.char_name = e.char_type + " " + str(idx)
 				e.spawn(t)
 				t.picked_for_spawn = true
-				print("spawn_enm " + str(e) + " at tile " + str(t) + " (" + str(t.index) + ")")
-				print(e)
-				print(t)
+				#print("spawn_enm " + str(e) + " at tile " + str(t) + " (" + str(t.index) + ")")
 				break
 
 	main.current_screen = 'battle'
@@ -291,6 +353,117 @@ func spawn_item(level, spawn_tile):
 	get_node("/root").add_child(item)
 	item.position = spawn_tile.global_position
 	spawn_tile.has_item = true
+
+
+
+func map_char(enm_type, char_node):
+	print("mapping " + str(enm_type))
+	if enm_type == meta.BEAR_TYPE:
+		var payload = {
+				"name": enm_type,
+				"move": classes.BEAR_BASE_MOVE,
+				"attacks": classes.BEAR_BASE_ATTACKS,
+				"attack_range": classes.BEAR_BASE_ATTACK_RANGE,
+				"health": classes.BEAR_BASE_HEALTH,
+				"defense": classes.BEAR_BASE_DEFENSE,
+				"damage": classes.BEAR_BASE_DMG,
+				"toughness": classes.BEAR_BASE_TOUGHNESS,
+				"evasion": classes.BEAR_BASE_EVASION
+			}
+		set_base_stats(payload, char_node)
+		classes.verify_char_stat_total(payload)
+	elif enm_type == meta.DOG_TYPE:
+		var payload = {
+				"name": enm_type,
+				"move": classes.DOG_BASE_MOVE,
+				"attacks": classes.DOG_BASE_ATTACKS,
+				"attack_range": classes.DOG_BASE_ATTACK_RANGE,
+				"health": classes.DOG_BASE_HEALTH,
+				"defense": classes.DOG_BASE_DEFENSE,
+				"damage": classes.DOG_BASE_DMG,
+				"toughness": classes.DOG_BASE_TOUGHNESS,
+				"evasion": classes.DOG_BASE_EVASION
+			}
+		set_base_stats(payload, char_node)
+		classes.verify_char_stat_total(payload)
+	else:
+		print("Enm type ("+str(enm_type)+") not mapped... Setting randomized stats for now")
+		randomize()
+		var payload = {
+				"name": enm_type,
+				"move": floor(rand_range(3, 8)),
+				"attacks": floor(rand_range(1, 4)),
+				"attack_range": floor(rand_range(1, 4)),
+				"health": floor(rand_range(5, 30)),
+				"defense": floor(rand_range(0, 15)),
+				"damage": floor(rand_range(1, 4)),
+				"toughness": floor(rand_range(0, 5)),
+				"evasion": floor(rand_range(0, 3))
+			}
+		set_base_stats(payload, char_node)
+		classes.verify_char_stat_total(payload)
+
+
+func set_base_stats(payload, char_node):
+	###### INIT base default stats
+	# Set base stats (default_) then later use default_ to set..
+	# in round stats (current_) and in battle stats (current_battle_)
+	char_node.default_attack = payload["attacks"]
+	char_node.default_atk_range = payload["attack_range"]
+	char_node.default_damage = payload["damage"]
+	char_node.default_health = payload["health"]
+	char_node.default_energy = 3
+	char_node.default_defense = payload["defense"]
+	char_node.default_toughness = payload["toughness"]
+	char_node.default_evasion = payload["evasion"]
+	char_node.default_distance = payload["move"]
+	########
+	
+	# Set in round stats (current_) and in battle stats (current_battle_) ..
+	# .. Based on character's base stats (default_)
+	
+	# HEALTH / MOVE #
+	char_node.current_move_distance = char_node.default_distance
+	char_node.current_battle_move_distance = char_node.default_distance
+
+	char_node.health = char_node.default_health
+	char_node.current_battle_health  = char_node.default_health
+
+	### ATK / DMG / ATK RANGE ###
+	char_node.current_attack = char_node.default_attack
+	char_node.current_battle_attack = char_node.default_attack
+
+	char_node.current_damage = char_node.default_damage
+	char_node.current_battle_damage = char_node.default_damage
+	
+	char_node.current_atk_range = char_node.default_atk_range
+	char_node.current_battle_atk_range = char_node.default_atk_range
+
+	#### DEF / TOUGHNESS / EVASION####
+	# DEF does not regen (like armor breaking)
+	## toughness regenerates each round (like regaining composure, hydrating, salve/bandges, or idk.. magic, etc, )
+	char_node.current_defense = char_node.default_defense
+	char_node.current_battle_defense = char_node.default_defense
+	
+	char_node.current_toughness = char_node.default_toughness
+	char_node.current_battle_toughness = char_node.default_toughness
+
+	char_node.current_evasion = char_node.default_evasion
+	char_node.current_battle_evasion = char_node.default_evasion
+	##### MISC #####
+	char_node.energy = char_node.default_energy
+
+
+
+func set_default_round_stats(char_node):
+	char_node.current_attack = char_node.default_attack - char_node.battle_attack_debuff
+	char_node.current_damage = char_node.default_damage - char_node.battle_damage_debuff
+	char_node.current_defense = char_node.default_defense - char_node.battle_defense_debuff
+	char_node.current_toughness = char_node.default_toughness - char_node.battle_toughness_debuff
+	char_node.current_evasion = char_node.default_evasion - char_node.battle_evasion_debuff
+	char_node.current_atk_range = char_node.current_atk_range
+	char_node.current_move_distance = char_node.default_distance - char_node.battle_move_debuff
+	char_node.energy = char_node.default_energy - char_node.battle_energy_debuff
 
 
 func check_if_in_op_atk_range(enm=null):
@@ -370,10 +543,40 @@ func remove_enemies():
 		enm.remove_enemy()
 
 
+func set_turn_order_info():
+	var max_chars = 5
+	var turn_order = []
+	var l = get_node("/root/level")
+	l.remove_icons()
+	l.round_turn_icons = []
+	if meta.player_turn:
+		var icon = main.CHAR_HUD_ICON.instance()
+		get_node("/root").add_child(icon)
+		icon.get_node("title").set_text("Player")
+		l.round_turn_icons.append(icon)
+
+	#for enm_round in l.round_turns:
+	for enm in get_tree().get_nodes_in_group("enemies"):
+		if enm.alive:
+			var icon = main.CHAR_HUD_ICON.instance()
+			get_node("/root").add_child(icon)
+			icon.get_node("title").set_text(enm.char_name)
+			l.round_turn_icons.append(icon)
+	
+	if !meta.player_turn:
+		var icon = main.CHAR_HUD_ICON.instance()
+		get_node("/root").add_child(icon)
+		icon.get_node("title").set_text("Player")
+		turn_order.append(icon)
+		l.round_turn_icons.append(icon)
+
+
+
 func reset_graphics_and_overlays(keep_popouts=false, tile=null):
 	var l = get_node("/root/level")
 	var player = get_node("/root/player")
-	l.get_node("text_overlay/text_overlay_node/tile_text").set_text("")
+	if player and player.has_node("cam_body/cl/text_overlay_node"):
+		player.get_node("cam_body/cl/text_overlay_node/tile_text").set_text("")
 	for t in l.level_tiles:
 		t.modulate = Color(1, 1, 1, 1)
 		if t.get_node("popout_container").visible:
@@ -382,7 +585,8 @@ func reset_graphics_and_overlays(keep_popouts=false, tile=null):
 		else:
 			t.displaying_popout = false
 			t.get_node("popout_container").visible = false
-		t.get_node("AnimationPlayer").stop()
+		if t.tile_type != WATER_TYPE:
+			t.get_node("AnimationPlayer").stop()
 		t.get_node("background").modulate = t.default_background_color
 		t.get_node("Sprite").modulate = Color(1, 1, 1, 1)
 		t.z_index = 0
@@ -450,7 +654,8 @@ func get_tile_in_line_from_target_tile(char_node, dist, start_tile, dir="horizon
 		if t.row == start_tile.row or t.col == start_tile.col: # must ensure we don't hit the A* logic to move around stuff, so stay in line
 			tile_found_in_dist += 1
 			char_node.path.append(t)
-			t.get_node("AnimationPlayer").stop()
+			if t.tile_type != WATER_TYPE:
+				t.get_node("AnimationPlayer").stop()
 			if len(char_node.path) > char_node.current_move_distance:
 				pass
 			elif t.can_move:
@@ -504,27 +709,24 @@ func roll_dice(successes_needed=0, roll_target=0, dice=[], chosen_tile=null):
 
 
 func take_damage(attacker, attack_details, defender, is_player=false):
+	if not defender or not defender.alive\
+	   or not attacker or not attacker.alive:
+		return 0
 	var player = get_node("/root/player")
 # warning-ignore:unused_variable
 	var l = get_node("/root/level")
-	var current_damage = attack_details["damage"] 
+	var current_damage = int(attack_details["damage"]) if attack_details["damage"] else 0
 	var hold_defense = defender.current_defense
 	var attacker_facing = attacker.get_node("Sprite").name.split("_")[0]
 	var defender_facing = defender.get_node("Sprite").name.split("_")[0]
 	
 	if hold_defense < 0: hold_defense = 0
-	if not is_player and not player.invisible:
+	if not is_player and player != defender and not player.invisible:
 		defender.chasing_player = true
 	if defender.current_defense > 0:
 		defender.current_defense -= current_damage
 		current_damage -= hold_defense
 
-	defender.get_node("AnimationPlayer").stop()
-	if current_damage <= 0:
-		current_damage = 0
-		defender.get_node("AnimationPlayer").play("attack_dodged")
-	else:
-		print("facing: " +str(defender.facing_dir + "knockback"))
 	defender.health -= current_damage
 	print(attacker.char_name + ' attacked ' + defender.char_name + ' for ' + str(attack_details["damage"]))
 	if defender.health <= 0:
@@ -532,6 +734,7 @@ func take_damage(attacker, attack_details, defender, is_player=false):
 			defender.defeat_enemy()
 		else:
 			print("player is dead")
+	return current_damage if current_damage else 0
 
 
 # warning-ignore:unused_argument
@@ -539,24 +742,25 @@ func get_char_dmg(attacker, defender):
 	var roll_result = roll_dice(0, 0, [die])
 	var dmg = roll_result["total"] #attacker.current_damage
 	#if attacker.stealth: dmg += attacker.stealth_dmg_bonus
-	return dmg
+	return floor(dmg + attacker.current_damage)
 
+
+func is_target_in_range(attacker, target):
+	var is_in_attack_range = false
+	var adjacent_tiles_in_range = meta.get_adjacent_tiles_in_distance(attacker.current_tile, attacker.current_atk_range+attacker.chosen_skill_atk_range, "fill")
+	for tile in adjacent_tiles_in_range:
+		if target.current_tile.index == tile.index:
+			is_in_attack_range = true
+	return is_in_attack_range
 
 func attack(attacker, defender, player_attacking=false, attack_name="Standard"):
 	""" Check tile, see if enemy is there and we are in range, if so attack (keep
 		stats if we want to undo the attack) ELSE do the move to tile stuff
 	"""
 	var player = get_node("/root/player")
-	var is_in_attack_range = false
 	var hit = false
-	var adjacent_tiles_in_range = get_adjacent_tiles_in_distance(attacker.current_tile, attacker.current_atk_range, "fill")
-	if not adjacent_tiles_in_range: return
-	for tile in adjacent_tiles_in_range:
-		if defender.current_tile == tile:
-			is_in_attack_range = true
-			break
 
-	if not is_in_attack_range:
+	if not is_target_in_range(attacker, defender):
 		return false
 
 	var attack_details = {
@@ -567,17 +771,24 @@ func attack(attacker, defender, player_attacking=false, attack_name="Standard"):
 		attacker.can_atk = false
 		attacker.current_attack -= 1
 		hit = true
-		take_damage(attacker, attack_details, defender, not player_attacking)
-		var shake_vel = attack_details["damage"]
-		if shake_vel < 5:
-			shake_vel = 5
-		elif shake_vel > 20:
-			shake_vel = 20
-		main.cameraShake(attacker.get_node("cam_body/cam"), shake_vel, .4)
-		var dmg_effect = main.DMG_EFFECT_SCENE.instance()
-		get_node("/root").call_deferred("add_child", dmg_effect)
-		dmg_effect.position = defender.global_position
-		dmg_effect.set_new_text("-"+str(attack_details["damage"]), dmg_effect.hurt_red_color)
+		var dmg_taken = take_damage(attacker, attack_details, defender, not player_attacking)
+		defender.get_node("AnimationPlayer").stop()
+		if dmg_taken <= 0:
+			dmg_taken = 0
+			defender.get_node("AnimationPlayer").play("attack_dodged")
+		else:
+			defender.get_node("AnimationPlayer").play("hurt")
+			var shake_vel = attack_details["damage"]
+			if shake_vel < 5:
+				shake_vel = 5
+			elif shake_vel > 20:
+				shake_vel = 20
+			main.cameraShake(attacker.get_node("cam_body/cam"), shake_vel, .4)
+			var dmg_effect = main.DMG_EFFECT_SCENE.instance()
+			get_node("/root").call_deferred("add_child", dmg_effect)
+			dmg_effect.position = defender.global_position
+			dmg_effect.set_new_text("-"+str(attack_details["damage"]), dmg_effect.hurt_red_color)
+
 		var l = get_node("/root/level")
 		l.change_turn_display_name(defender)
 		
@@ -603,17 +814,22 @@ func get_vol_range(is_player=true, node_making_noise=null):
 
 func get_character_display_text(character):
 # warning-ignore:unused_variable
+	var character_node = character
 	var char_name = str(character.char_name)
 	var character_stats = " -- " + str(character.char_name) + " -- "
 	var additional_details = ""
-	var character_card = character.get_node("card")
 	# additional_details are anything else we want to show, status effects, even if they are more "character stats"
 	# they are just not the 'main' ones
-	character.get_node("card/health_text").set_text(str(character.health))
-	character.get_node("card/name_text").set_text(character.char_name)
-	character.get_node("card/atk_dmg_text").set_text(str(character.current_attack) + "/" + str(character.current_damage))
-	character.get_node("card/def_text").set_text(str(character.current_defense) + "/" + str(character.current_battle_defense))
-	character.get_node("card/misc_text").set_text(str(character.current_move_distance) + "/" + str(character.current_battle_move_distance))
+	if character.IS_PLAYER:
+		character_node = character_node.get_node("cam_body/cl")
+		character_node.get_node("card/type_text").set_text("- "+str(character.char_type))
+	character_node.get_node("card/health_text").set_text(str(character.health))
+	character_node.get_node("card/name_text").set_text("- "+str(character.char_name))
+	character_node.get_node("card/atk_dmg_text").set_text(str(character.current_attack) + "/" + str(character.current_battle_attack)+" * ("+str(character.current_damage)+") ")
+	character_node.get_node("card/def_text").set_text(str(character.current_defense) + "/" + str(character.current_battle_defense))
+	character_node.get_node("card/def_text").set_text(str(character.current_toughness) + "/" + str(character.current_battle_toughness))
+	character_node.get_node("card/misc_text").set_text(str(character.current_move_distance) + "/" + str(character.current_battle_move_distance))
+	character_node.get_node("card/move_dist").set_text(str(character.current_move_distance) + "/" + str(character.current_battle_move_distance))
 	
 	
 	# character_stats += "\nHP: " + str(character.health)

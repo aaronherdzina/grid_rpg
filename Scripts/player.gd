@@ -1,8 +1,10 @@
 extends Node2D
 
-const FOLLOW_SPEED = 600
+const FOLLOW_SPEED = 900
+const IS_PLAYER = true
 
-
+var char_type = "dog"
+var show_overlay = false
 var speed = rand_range(300, 500)
 var char_name = "Player"
 var path = []
@@ -16,13 +18,13 @@ var moving = false
 var current_battle_move_distance = 8
 var current_move_distance = 8
 var health = 15
-var starting_turn_health = 50
+var default_health = 5
+var current_battle_health = 50
 var processing_turn = false
 var stealth = true
 var invisible = false
 var player_cam_clamp_distance = 200
 var can_move_cam = true
-
 var cam_vel = Vector2(0, 0)
 var noise = 2
 var cam_free_move = false
@@ -37,6 +39,15 @@ var can_attack = true
 var energy = 3
 var cam_node_pos = self.position
 var selected_attack = meta.standard_atk_type
+var current_battle_toughness = 2
+var current_toughness = 3
+var default_toughness = 2
+var battle_toughness_debuff = 0
+
+var default_evasion = 0
+var current_battle_evasion = 0
+var current_evasion = 0
+var battle_evasion_debuff = 0
 var default_energy = 3
 var default_atk_range = 1
 var default_attack = 2
@@ -76,6 +87,13 @@ var passenger_move_bonus = 0
 var passenger_health_bonus = 0
 var passenger_defense_bonus = 0
 
+var chosen_skill_atk_range = 5
+var chosen_skill = classes.MELEE_SKILL_PUSH
+var skills = [classes.MELEE_SKILL_PUSH, 
+			 classes.WRESTLER_SKILL_THROW, classes.WRESTLER_SKILL_SWAP,
+			 classes.SHAPER_SKILL_DIRT_SWEEP]
+var skill_btns = []
+
 # when energy runs out buff are removed and we set to our default stats
 func reset_energy_based_stats():
 	current_attack = default_attack
@@ -108,22 +126,22 @@ func attack(target, should_move=true, attack_name="standard"):
 	""" Check tile, see if enemy is there and we are in range, if so attack (keep
 		stats if we want to undo the attack) ELSE do the move to tile stuff
 	"""
-	var is_in_attack_range = false
-	var adjacent_tiles_in_range = meta.get_adjacent_tiles_in_distance(current_tile, current_battle_atk_range, "fill")
-	for tile in adjacent_tiles_in_range:
-		if target.current_tile == tile:
-			is_in_attack_range = true
-			break
+	randomize()
 
-	if not is_in_attack_range and should_move:
-		chosen_tile = target.current_tile
-		move()
+	if not meta.is_target_in_range(self, target):
 		return
+	#	chosen_tile = target.current_tile
+	#	move()
 	 
 	#target, self, meta.player_stats, target.stat)
 	#classes.melee_skill_1_push(target, self, meta.player_stats, target.stats)
-	classes.wrestler_skill_1_throw(target, self, meta.player_stats, target.stats)
+	#classes.wrestler_skill_1_throw(target, self, meta.player_stats, target.stats)
 	#classes.wrestler_skill_2_swap(target, self, meta.player_stats, target.stats)
+	
+	var skill = skills[rand_range(0, len(skills))]
+	
+	classes.ready_skill(self, chosen_skill)
+	classes.call(chosen_skill, target, self, meta.player_stats, target.stats)
 	var timer = main.make_timer(.5)
 	timer.start()
 	yield(timer, "timeout")
@@ -221,9 +239,48 @@ func handle_start_and_reset_vars():
 		moving = false
 
 
+func set_skill_btn_position():
+	var i = 1
+	var width = 100
+	for btn in get_tree().get_nodes_in_group("skill_btns"):
+		if btn and main.checkIfNodeDeleted(btn) == false:
+			btn.queue_free()
+	skill_btns = []
+	for s in skills:
+		var sbs = main.skill_btn_scene.instance()
+		get_node("cam_body/cl").add_child(sbs)
+		sbs.set_button(s)
+		skill_btns.append(sbs)
+		sbs.position = $cam_body/cl/card/skills/start_pos.global_position
+		if sbs.skill == chosen_skill:
+			sbs.modulate = sbs.set_skill_clr
+		if i != 1:
+			sbs.position.x += (width * i)
+		i += 1
+
+
+func hold_skill_btn_position():
+	var i = 1
+	var n = 0
+	var width = 150
+	var height = 100
+	var amnt_in_row = 1
+	return
+	for sb in skill_btns:
+		sb.position = $cam_body/cl/card/skills/start_pos.global_position
+		if i != 1 and amnt_in_row % 3 != 0:
+			sb.position.x += (width * amnt_in_row)
+		if i % 3 == 0:
+			n += 1
+			amnt_in_row = 1
+			
+		sb.position.y += (height * n) if n != 0 else 0
+		i += 1
+		amnt_in_row += 1
+
 func reset_turn():
 	path = []
-	health = starting_turn_health
+	health = current_battle_health
 	current_tile = turn_start_tile
 	position = turn_start_tile.global_position
 	chosen_tile = turn_start_tile
@@ -242,14 +299,17 @@ func reset_can_atk():
 
 func start_turn():
 	# start turn
-	if energy <= 0:
-		reset_energy_based_stats()
+	#if energy <= 0:
+	#	reset_energy_based_stats()
 	meta.reset_char_sprite_pos($Sprite)
-	meta.set_new_turn_stats(self)
+	#meta.set_new_turn_stats(self)
+	meta.set_default_round_stats(self)
 	meta.set_end_and_start_turn_tile_based_details(self, current_tile)
 	var l = get_node("/root/level")
 	var default_weight =  meta.unccupied_tile_weight if current_tile.can_move else meta.wall_tile_weight
 	l.level_astar.set_point_weight_scale(current_tile.index, default_weight)
+	for t in l.level_tiles:
+		t.pressing = false
 	current_tile.player_on_tile = false
 	turn_start_tile = current_tile
 	handle_start_and_reset_vars()
@@ -392,9 +452,11 @@ func _process(delta):
 	# note the path is a list of actual tiles 
 	#if meta.player_turn:
 	if meta.player_turn:
-		if not meta.hovering_on_something:
-			get_node("/root/level").attach_text_overlay($cam_body/cam/bottom_cam_pos, true)
+		hold_skill_btn_position()
+		#if not meta.hovering_on_something:
+		get_node("/root/level").handle_turn_order_display()
 		if moving:
+			$cam_body.position = $Sprite.position
 			if path.size() > 0:
 				if not path[0].can_move:
 					path = []
@@ -424,6 +486,9 @@ func _process(delta):
 			elif moving:
 				moving = false
 				position = current_tile.global_position
+	else:
+		if len(get_node("/root/level").round_turns) > 0 and main.checkIfNodeDeleted(get_node("/root/level").round_turns[0]) == false:
+			get_node("/root/level").handle_turn_order_display()
 
 
 func _on_top_btn_mouse_entered():
@@ -459,7 +524,11 @@ func _on_bottom_btn_mouse_exited():
 
 
 func _on_AnimationPlayer_animation_finished(anim_name):
-	if "knockback" in anim_name:
+	if "knockback" in anim_name or true:
 		print("facing is " + str(facing_dir) + "stand_up")
 		$AnimationPlayer.play(str(facing_dir) + "stand_up")
 	meta.reset_char_sprite_pos($Sprite)
+
+
+func _on_MenuButton_pressed():
+	$cam_body/cl/card/MenuButton.add_skill_buttons(skills)

@@ -2,25 +2,42 @@ extends Node
 
 const debug = false # for dev
 
+const atk_scene = preload("res://Scenes/atk_anim.tscn")
+const skill_btn_scene = preload("res://Scenes/skill_btn.tscn")
 
 # TILES
 const BASIC_TILE = preload("res://Sprites/tiles/new style/standard/iso grass.png")
 const WALL_TILE = preload("res://Sprites/tiles/new style/unique/standard water tile.png")
+const ROCKY_GROUND_TILE = preload("res://Sprites/tiles/new style/standard/rocky ground.png")
+const GRASS_TILE_LARGE_ROCK = preload("res://Sprites/tiles/new style/standard/grass tile rock large rock detail.png")
 const GRASS_TILE = preload("res://Sprites/tiles/new style/standard/iso grass.png")
 const GRASS_TILE_DETAIL = preload("res://Sprites/tiles/new style/standard/iso grass rock plant detail.png")
 const GRASS_TILE_EXPOSED_ROCK = preload("res://Sprites/tiles/new style/standard/iso exposed rock.png")
 const GRASS_PARTIAL_ROAD = preload("res://Sprites/tiles/new style/standard/iso partial road.png")
 const GRASS_ROAD = preload("res://Sprites/tiles/new style/standard/iso road.png")
+const GRASS_TILE_GRAVEL_MIX = preload("res://Sprites/tiles/new style/standard/grass_4_detail_graveltile.png")
+const GRASS_FEW_ROCKS = preload("res://Sprites/tiles/new style/standard/grass_4_detail_rocks_tile.png")
+const GRASS_LUSH = preload("res://Sprites/tiles/new style/standard/grass_4_detail_tile.png")
 const GRASS_ROAD_FULL = preload("res://Sprites/tiles/new style/standard/iso road full.png")
 const LIGHT_GREY_TILE = preload("res://Sprites/tiles/new style/standard/iso light grey.png")
 const SLATE_TILE = preload("res://Sprites/tiles/new style/standard/iso slate.png")
-const DIRT_TILE = preload("res://Sprites/tiles/new style/standard/iso light red.png")
+
+const DIRT_TILE = preload("res://Sprites/tiles/new style/standard/red dirt tile.png")
+const DIRT_TILE_ROAD_FULL = preload("res://Sprites/tiles/new style/standard/red dirt multi bricks.png")
+const DIRT_TILE_ROAD_MIN = preload("res://Sprites/tiles/new style/standard/red dirt single brick.png")
+const DIRT_TILE_ROAD_MED = preload("res://Sprites/tiles/new style/standard/red dirt two bricks.png")
+
 const DARK_RED_TILE = preload("res://Sprites/tiles/new style/standard/iso dark red.png")
 
 
 #### edges:
-const GRASS_TILE_EDGE = preload("res://Sprites/tiles/new style/edges/grass/top_grass_edge.png")
-
+const LIGHT_GRASS_TILE_EDGE = preload("res://Sprites/tiles/new style/edges/grass/grass edge thick lighter.png")
+const DARK_GRASS_TILE_EDGE = preload("res://Sprites/tiles/new style/edges/grass/grass edge thick ddark.png")
+const GRASS_TILE_OTHER_EDGE = preload("res://Sprites/tiles/new style/edges/grass/grass_edge_bottom_right.png")
+const LIGHTER_GENERAL_TILE_EDGE = preload("res://Sprites/tiles/new style/edges/misc/thin dark drop off.png")
+const DARK_GENERAL_TILE_EDGE = preload("res://Sprites/tiles/new style/edges/misc/thick dark drop off.png")
+const GRASS_TILE_INSET_EDGE = preload("res://Sprites/tiles/new style/edges/grass/iso grass corner out.png")
+const GRASS_TILE_OUTSET_EDGE = preload("res://Sprites/tiles/new style/edges/grass/iso flipped grass edge outset.png")
 
 const ENEMY_SPAWN_TILE = preload("res://Sprites/tiles/new style/standard/bright tile.png")
 const PLAYER_SPAWN_TILE = preload("res://Sprites/tiles/new style/standard/bright tile.png")
@@ -34,9 +51,11 @@ const WATER_TILE_2 = preload("res://Sprites/tiles/new style/standard/iso light b
 const DMG_EFFECT_SCENE = preload("res://Scenes/dmgEffect.tscn")
 
 var roads_pieces = [GRASS_TILE_EXPOSED_ROCK, GRASS_PARTIAL_ROAD, GRASS_ROAD_FULL, GRASS_ROAD]
+var grass_pieces = [GRASS_TILE, GRASS_LUSH, GRASS_TILE, GRASS_TILE_DETAIL]
 var basic_water_tiles = [WATER_TILE_1, WATER_TILE_2]
-var special_forest_tiles = [FOREST_PATH_TILE_1]
-
+var special_forest_tiles = [GRASS_PARTIAL_ROAD, GRASS_FEW_ROCKS, GRASS_LUSH]
+var dirt_pieces = [DIRT_TILE, DIRT_TILE, DIRT_TILE_ROAD_MIN, DIRT_TILE_ROAD_MED]
+var dirt_road_pieces = [DIRT_TILE_ROAD_FULL, DIRT_TILE_ROAD_MED, DIRT_TILE_ROAD_MIN, DIRT_TILE_ROAD_MIN, DIRT_TILE]
 const MOUNTAIN_TILE = preload("res://Sprites/tiles/new style/standard/mid tile.png")
 #######
 
@@ -45,6 +64,9 @@ const LEVEL = preload("res://Scenes/level.tscn")
 const TILE = preload("res://Scenes/tile.tscn")
 const ENEMY = preload("res://Scenes/enemy.tscn")
 const PLAYER = preload("res://Scenes/player.tscn")
+
+const CHAR_HUD_ICON = preload("res://Scenes/char_hud_icon.tscn")
+
 #### SAVE LOAD VARS
 var game_name = 'grid_rpg_test'
 var playerFilepath = "user://" + str(game_name) + "_playerData_.data"
@@ -185,6 +207,24 @@ func _input(_event):
 	elif Input.is_action_pressed("right"):
 		if current_screen == "battle":
 			handle_in_battle_input("right")
+	elif Input.is_action_pressed("show_overlay"):
+		if current_screen == "battle":
+			handle_in_battle_input("show_overlay")
+	elif Input.is_action_just_released("show_overlay"):
+		if get_node("/root").has_node("player"):
+			var player = get_node("/root/player")
+			player.show_overlay = false
+		if get_node("/root").has_node("level"):
+			var l = get_node("/root/level")
+			for t in l.level_tiles:
+				t.modulate = Color(1, 1, 1, 1)
+	elif Input.is_action_just_released("up") or\
+		 Input.is_action_just_released("down") or\
+		 Input.is_action_just_released("left") or\
+		 Input.is_action_just_released("right"):
+		if get_node("/root").has_node("player"):
+			var player = get_node("/root/player")
+			player.move_cam("stop")
 
 func handle_in_battle_input(action):
 	if action == "start":
@@ -192,22 +232,22 @@ func handle_in_battle_input(action):
 		level.end_turn()
 	elif action == "action":
 		pass
+	elif action == "show_overlay":
+		if get_node("/root").has_node("player"):
+			var player = get_node("/root/player")
+			player.show_overlay = true
 	elif action == "scroll_forward":
 		if get_node("/root").has_node("player"):
 			var player = get_node("/root/player")
 			if player.get_node("cam_body/cam").zoom.x > .5:
 				player.get_node("cam_body/cam").zoom.x -= zoom_increment
 				player.get_node("cam_body/cam").zoom.y -= zoom_increment
-				var overlay = player.get_node("cam_body/cam/overlays and underlays")
-				overlay.set_scale(player.get_node("cam_body/cam").zoom)
 	elif action == "scroll_back":
 		if get_node("/root").has_node("player"):
 			var player = get_node("/root/player")
-			if player.get_node("cam_body/cam").zoom.x < 1.5:
+			if player.get_node("cam_body/cam").zoom.x < 2.5:
 				player.get_node("cam_body/cam").zoom.x += zoom_increment
 				player.get_node("cam_body/cam").zoom.y += zoom_increment
-				var overlay = player.get_node("cam_body/cam/overlays and underlays")
-				overlay.set_scale(player.get_node("cam_body/cam").zoom)
 	elif action == "back": 
 		if meta.player_turn:
 			if not get_node("/root").has_node("player"):
@@ -243,19 +283,23 @@ func handle_in_battle_input(action):
 	if action == "up":
 		if get_node("/root").has_node("player"):
 			var p = get_node("/root/player")
-			p.get_node("cam_body").position.y -= round(cam_move_vel * .5)
+			p.move_cam("up")
+			#p.get_node("cam_body").position.y -= round(cam_move_vel * .5)
 	elif action == "down":
 		if get_node("/root").has_node("player"):
 			var p = get_node("/root/player")
-			p.get_node("cam_body").position.y += round(cam_move_vel * .5)
+			p.move_cam("down")
+			#p.get_node("cam_body").position.y += round(cam_move_vel * .5)
 	if action == "left":
 		if get_node("/root").has_node("player"):
 			var p = get_node("/root/player")
-			p.get_node("cam_body").position.x -= round(cam_move_vel * .5)
+			p.move_cam("left")
+			#p.get_node("cam_body").position.x -= round(cam_move_vel * .5)
 	elif action == "right":
 		if get_node("/root").has_node("player"):
 			var p = get_node("/root/player")
-			p.get_node("cam_body").position.x += round(cam_move_vel * .5)
+			p.move_cam("right")
+			#p.get_node("cam_body").position.x += round(cam_move_vel * .5)
 
 
 func make_timer(time=0):

@@ -7,7 +7,7 @@
 [ext_resource path="res://Sprites/overlays/diagnol overlay.png" type="Texture" id=5]
 [ext_resource path="res://Sprites/UI/Untitled_Artwork 2.png" type="Texture" id=6]
 [ext_resource path="res://Sprites/UI/Untitled_Artwork.jpg" type="Texture" id=7]
-[ext_resource path="res://Sprites/tiles/new style/unique/standard water tile.png" type="Texture" id=8]
+[ext_resource path="res://Sprites/tiles/new style/standard/iso slate.png" type="Texture" id=8]
 
 [sub_resource type="DynamicFontData" id=1]
 font_path = "res://fonts/font4.ttf"
@@ -38,7 +38,7 @@ scale = Vector2( 21.8728, 15.1118 )
 texture = ExtResource( 3 )
 
 [node name="Sprite" type="Sprite" parent="background_imgs"]
-modulate = Color( 0.980392, 0.980392, 0.980392, 1 )
+modulate = Color( 0.490196, 0.490196, 0.686275, 1 )
 position = Vector2( 975.807, 552.958 )
 scale = Vector2( 66, 66 )
 texture = ExtResource( 8 )
@@ -65,7 +65,7 @@ z_index = 15
 
 [node name="background" type="Sprite" parent="text_overlay/text_overlay_node"]
 modulate = Color( 0, 0, 0, 0.215686 )
-position = Vector2( -47.864, -281 )
+position = Vector2( -60, -298 )
 scale = Vector2( 0.65, 1.44667 )
 texture = ExtResource( 7 )
 
@@ -185,6 +185,8 @@ valign = 1
 __meta__ = {
 "_edit_use_anchors_": false
 }
+
+[node name="turn_order_container" type="Node2D" parent="text_overlay/text_overlay_node"]
 
 [node name="starting_tile" type="Node2D" parent="."]
 visible = false

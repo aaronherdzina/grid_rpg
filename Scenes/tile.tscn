@@ -1,16 +1,44 @@
-[gd_scene load_steps=14 format=2]
+[gd_scene load_steps=25 format=2]
 
 [ext_resource path="res://Scripts/tile.gd" type="Script" id=1]
 [ext_resource path="res://Sprites/tiles/basic/new border grey tile.png" type="Texture" id=2]
-[ext_resource path="res://Sprites/tiles/new style/edges/grass/dark_shaded_grass_edge.png" type="Texture" id=3]
+[ext_resource path="res://Sprites/tiles/new style/edges/grass/grass edge thick lighter.png" type="Texture" id=3]
 [ext_resource path="res://fonts/newfont1.ttf" type="DynamicFontData" id=4]
 [ext_resource path="res://Sprites/tokens/token 12.png" type="Texture" id=5]
 [ext_resource path="res://Sprites/tokens/token 4.png" type="Texture" id=6]
 [ext_resource path="res://Sprites/UI/Untitled_Artwork 2.png" type="Texture" id=7]
-[ext_resource path="res://Sprites/tiles/new style/standard/iso light red.png" type="Texture" id=11]
+[ext_resource path="res://Sprites/tiles/new style/edges/grass/grass edge thick ddark.png" type="Texture" id=8]
+[ext_resource path="res://Sprites/tiles/new style/water anim/iso water wave anim 2.png" type="Texture" id=9]
+[ext_resource path="res://Sprites/tiles/new style/water anim/iso water wave anim 5.png" type="Texture" id=10]
+[ext_resource path="res://Sprites/tiles/new style/water anim/iso water wave anim 1.png" type="Texture" id=11]
+[ext_resource path="res://Sprites/tiles/new style/water anim/iso water wave anim 6.png" type="Texture" id=12]
+[ext_resource path="res://Sprites/tiles/new style/water anim/iso water wave anim 4.png" type="Texture" id=13]
+[ext_resource path="res://Sprites/tiles/new style/water anim/iso water wave anim 3.png" type="Texture" id=14]
+[ext_resource path="res://Sprites/tiles/new style/standard/iso blue water.png" type="Texture" id=15]
+[ext_resource path="res://Sprites/tiles/new style/edges/grass/iso grass corner out.png" type="Texture" id=16]
+[ext_resource path="res://Sprites/tiles/new style/edges/grass/iso flipped grass edge outset.png" type="Texture" id=17]
 
-[sub_resource type="Animation" id=1]
-resource_name = "wobble"
+[sub_resource type="StreamTexture" id=1]
+flags = 4
+
+[sub_resource type="Animation" id=2]
+resource_name = "water anim"
+length = 2.5
+loop = true
+tracks/0/type = "value"
+tracks/0/path = NodePath("Sprite:texture")
+tracks/0/interp = 1
+tracks/0/loop_wrap = true
+tracks/0/imported = false
+tracks/0/enabled = true
+tracks/0/keys = {
+"times": PoolRealArray( 0, 0.2, 0.4, 0.6, 0.8, 1, 1.2 ),
+"transitions": PoolRealArray( 1, 1, 1, 1, 1, 1, 1 ),
+"update": 1,
+"values": [ ExtResource( 11 ), ExtResource( 9 ), ExtResource( 14 ), ExtResource( 13 ), ExtResource( 10 ), ExtResource( 12 ), ExtResource( 15 ) ]
+}
+
+[sub_resource type="Animation" id=3]
 length = 2.8
 loop = true
 tracks/0/type = "value"
@@ -38,8 +66,7 @@ tracks/1/keys = {
 "values": [ Vector2( 0.95, 0.95 ), Vector2( 0.75, 0.75 ), Vector2( 0.95, 0.95 ), Vector2( 0.75, 0.75 ), Vector2( 0.95, 0.95 ) ]
 }
 
-[sub_resource type="Animation" id=2]
-resource_name = "wobble repeat"
+[sub_resource type="Animation" id=4]
 length = 5.0
 loop = true
 tracks/0/type = "value"
@@ -67,8 +94,7 @@ tracks/1/keys = {
 "values": [ Vector2( 0.95, 0.95 ), Vector2( 0.75, 0.75 ), Vector2( 0.95, 0.95 ), Vector2( 0.75, 0.75 ), Vector2( 0.95, 0.95 ), Vector2( 0.75, 0.75 ), Vector2( 0.95, 0.95 ) ]
 }
 
-[sub_resource type="Animation" id=3]
-resource_name = "wobble selected"
+[sub_resource type="Animation" id=5]
 length = 2.8
 loop = true
 tracks/0/type = "value"
@@ -96,13 +122,13 @@ tracks/1/keys = {
 "values": [ Vector2( 0.95, 0.95 ), Vector2( 0.75, 0.75 ), Vector2( 0.95, 0.95 ), Vector2( 0.75, 0.75 ), Vector2( 0.95, 0.95 ) ]
 }
 
-[sub_resource type="DynamicFont" id=4]
+[sub_resource type="DynamicFont" id=6]
 size = 30
 outline_size = 2
 outline_color = Color( 0, 0, 0, 1 )
 font_data = ExtResource( 4 )
 
-[sub_resource type="DynamicFont" id=5]
+[sub_resource type="DynamicFont" id=7]
 size = 55
 font_data = ExtResource( 4 )
 
@@ -138,9 +164,17 @@ __meta__ = {
 }
 
 [node name="background" type="Sprite" parent="."]
-modulate = Color( 0, 0, 0, 0 )
+visible = false
+modulate = Color( 0.0980392, 0.0980392, 0.215686, 0.392157 )
 position = Vector2( -0.0883824, -0.176782 )
-scale = Vector2( 0.05, 0.05 )
+scale = Vector2( 2, 2 )
+texture = ExtResource( 2 )
+
+[node name="background2" type="Sprite" parent="."]
+visible = false
+modulate = Color( 0.0980392, 0.0980392, 0.215686, 0.392157 )
+position = Vector2( -0.0883824, -0.176782 )
+scale = Vector2( 2, 2 )
 texture = ExtResource( 2 )
 
 [node name="Sprite" type="Sprite" parent="."]
@@ -151,26 +185,46 @@ texture = ExtResource( 11 )
 z_index = 7
 
 [node name="top_edge" type="Sprite" parent="edges"]
-position = Vector2( 0, -10 )
+visible = false
+position = Vector2( 0, -5 )
 rotation = 1.5708
-texture = ExtResource( 3 )
+z_index = 2
+texture = ExtResource( 8 )
 offset = Vector2( 0, 5 )
+
+[node name="top_left_edge" type="Sprite" parent="edges"]
+visible = false
+position = Vector2( -92, -102 )
+z_index = 2
+texture = ExtResource( 17 )
+offset = Vector2( 0, 5 )
+
+[node name="left_edge" type="Sprite" parent="edges"]
+visible = false
+position = Vector2( -5, 0 )
+z_index = 2
+texture = ExtResource( 3 )
 
 [node name="bottom_edge" type="Sprite" parent="edges"]
 visible = false
-position = Vector2( 0, 5 )
+position = Vector2( -2.5, 0 )
 rotation = -1.5708
-texture = ExtResource( 3 )
-
-[node name="left_edge" type="Sprite" parent="edges"]
-position = Vector2( -10, 0 )
-texture = ExtResource( 3 )
+z_index = 2
+texture = SubResource( 1 )
 
 [node name="right_edge" type="Sprite" parent="edges"]
 visible = false
-position = Vector2( 5, -5 )
+position = Vector2( 0, -7.5 )
 rotation = 3.14159
-texture = ExtResource( 3 )
+z_index = 2
+texture = SubResource( 1 )
+
+[node name="bottom_right_edge" type="Sprite" parent="edges"]
+visible = false
+position = Vector2( 0, -12 )
+z_index = 2
+texture = ExtResource( 16 )
+offset = Vector2( 0, 5 )
 
 [node name="feature_sprite" type="Sprite" parent="."]
 position = Vector2( 1.14441e-05, -1.52588e-05 )
@@ -202,9 +256,10 @@ __meta__ = {
 }
 
 [node name="AnimationPlayer" type="AnimationPlayer" parent="."]
-anims/wobble = SubResource( 1 )
-"anims/wobble repeat" = SubResource( 2 )
-"anims/wobble selected" = SubResource( 3 )
+"anims/water anim" = SubResource( 2 )
+anims/wobble = SubResource( 3 )
+"anims/wobble repeat" = SubResource( 4 )
+"anims/wobble selected" = SubResource( 5 )
 
 [node name="VisibilityEnabler2D" type="VisibilityEnabler2D" parent="."]
 position = Vector2( -0.999999, -1.00001 )
@@ -216,7 +271,7 @@ margin_left = -73.0
 margin_top = -75.0
 margin_right = 36.0
 margin_bottom = 36.0
-custom_fonts/font = SubResource( 4 )
+custom_fonts/font = SubResource( 6 )
 custom_colors/font_color_shadow = Color( 0.0784314, 0.0784314, 0.0784314, 1 )
 text = "+1
 MOVE"
@@ -270,7 +325,7 @@ texture = ExtResource( 7 )
 margin_right = 480.0
 margin_bottom = 145.0
 rect_scale = Vector2( 0.5, 0.5 )
-custom_fonts/font = SubResource( 5 )
+custom_fonts/font = SubResource( 7 )
 text = "Move"
 align = 1
 valign = 1
@@ -294,7 +349,7 @@ texture = ExtResource( 7 )
 margin_right = 480.0
 margin_bottom = 145.0
 rect_scale = Vector2( 0.5, 0.5 )
-custom_fonts/font = SubResource( 5 )
+custom_fonts/font = SubResource( 7 )
 text = "Attack"
 align = 1
 valign = 1
@@ -318,7 +373,7 @@ texture = ExtResource( 7 )
 margin_right = 480.0
 margin_bottom = 145.0
 rect_scale = Vector2( 0.5, 0.5 )
-custom_fonts/font = SubResource( 5 )
+custom_fonts/font = SubResource( 7 )
 text = "Cancel"
 align = 1
 valign = 1
